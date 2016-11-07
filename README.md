@@ -1,6 +1,6 @@
 # STUN/TURN using PHP in Despair
 
-This is the working area for the Individual internet-draft, "STUN/TURN using PHP in Despair".
+This is the working area for assorted Individual internet-drafts relating to HTTP and QUIC.
 
 * [Editor's copy](https://MikeBishop.github.io/http-misc-extensions/)
 * [Individual Draft] (https://tools.ietf.org/html/draft-bishop-httpbis-extended-settings)
@@ -20,20 +20,13 @@ instructions](https://github.com/martinthomson/i-d-template/blob/master/doc/SETU
 
 ## Contributing
 
-Before submitting feedback, please familiarize yourself with our current issues
-list and review the [working group
-documents](https://datatracker.ietf.org/wg/httpbis/documents/) and [mailing
-list discussion](https://mailarchive.ietf.org/arch/browse/httpbis/). If you're
-new to this, you may also want to read the [Tao of the
-IETF](https://www.ietf.org/tao.html).
-
 Be aware that all contributions to the specification fall under the "NOTE WELL"
 terms outlined below.
 
 1. The best way to provide feedback (editorial or design) and ask questions is
 sending an e-mail to our mailing list
-([info](https://www.ietf.org/mailman/listinfo/httpbis)). This will ensure that
-the entire Working Group sees your input in a timely fashion.
+([http](https://www.ietf.org/mailman/listinfo/httpbis) or [quic](https://www.ietf.org/mailman/listinfo/quic)).
+This will ensure that the entire Working Group sees your input in a timely fashion.
 
 2. If you have **editorial** suggestions (i.e., those that do not change the
 meaning of the specification), you can either:

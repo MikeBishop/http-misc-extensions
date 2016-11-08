@@ -14,25 +14,25 @@ stand_alone: yes
 pi: [toc, sortrefs, symrefs]
 
 author:
--
-ins: M. Bishop
-name: Mike Bishop
-organization: Microsoft
-email: michael.bishop@microsoft.com
+  -
+    ins: M. Bishop
+    name: Mike Bishop
+    organization: Microsoft
+    email: michael.bishop@microsoft.com
 
 normative:
-RFC7230:
+  RFC7540:
+  RFC5226:
 
 informative:
-I-D.bishop-httpbis-http2-additional-certs:
-MS-HTTP2E:
-target: http://download.microsoft.com/download/9/5/E/95EF66AF-9026-4BB0-A41D-A4F81802D92C/[MS-HTTP2E].pdf
-title: "Hypertext Transfer Protocol Version 2 (HTTP/2) Extension"
-author:
-org: Microsoft Corporation
-date: 2015-10
-RFC7838:
-I-D.ietf-httpbis-origin-frame:
+  I-D.bishop-httpbis-http2-additional-certs:
+  MS-HTTP2E:
+    target: http://download.microsoft.com/download/9/5/E/95EF66AF-9026-4BB0-A41D-A4F81802D92C/[MS-HTTP2E].pdf
+    title: "Hypertext Transfer Protocol Version 2 (HTTP/2) Extension"
+    author:
+    date: 2015-10
+  RFC7838:
+  I-D.ietf-httpbis-origin-frame:
 
 
 

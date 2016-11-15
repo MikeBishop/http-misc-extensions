@@ -454,7 +454,7 @@ a connection error of type FRAME_SIZE_ERROR.
 
 ### SETTINGS
 
-The EXTENDED_SETTINGS frame as defined in [I-D.draft-bishop-httpbis-extended-settings]
+The EXTENDED_SETTINGS frame as defined in [I-D.bishop-httpbis-extended-settings]
 will be renamed SETTINGS and will replace the HTTP/2 SETTINGS frame.
 
 **TODO:**  SETTINGS_ACK and stream state.  Do we need to emit the ACK

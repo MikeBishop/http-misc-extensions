@@ -2,7 +2,12 @@
 
 This is the working area for assorted Individual internet-drafts relating to HTTP and QUIC.
 
-* [Editor's copy](https://MikeBishop.github.io/http-misc-extensions/)
+## QPACK and HTTP/QUIC
+* [Editor's copy](https://mikebishop.github.io/http-misc-extensions/draft-bishop-quic-qpack.html)
+* [Individual Draft] (https://tools.ietf.org/html/draft-bishop-quic-qpack)
+
+## HTTP/2 EXTENDED_SETTINGS
+* [Editor's copy](https://mikebishop.github.io/http-misc-extensions/draft-bishop-httpbis-extended-settings.html)
 * [Individual Draft] (https://tools.ietf.org/html/draft-bishop-httpbis-extended-settings)
 
 

@@ -120,10 +120,7 @@ header block MUST be decoded and the output discarded.
 
 No entries are evicted from the dynamic table. Size management is 
 purely the responsibility of the sender, which MUST NOT exceed the
-declared memory size of the receiver.  The receiver will
-periodically summarize its current understanding of the header
-table in a QPACK-ACK frame, which permits the sender to update
-its state as needed.
+declared memory size of the receiver.
 
 Both sender and receiver will maintain a count of references to
 the indexed entry.  This count includes:
@@ -135,27 +132,9 @@ the indexed entry.  This count includes:
   - Explicit emissions of the indexed value
   
 The sender MUST consider memory as committed beginning with the
-first time the indexed entry is assigned.  A newly-added entry
-proceeds through the following state:
-
-  1. **Insert requested.**  The encoder emits at least one
-     identical literal header value with indexing creating the
-     dynamic table entry. At this point, it begins counting the
-     new entry against the maximum table size.
-     
-  2. **Insert acknowledged.**  When the decoder has received
-     a literal header value with indexing creating the dynamic
-     table entry, it MUST emit a QPACK-ACK frame showing the
-     entry as occupied.
-     
-  3. **Insert completed.**  When the encoder has received a
-     QPACK-ACK frame acknowledging the insertion, it SHOULD NOT
-     emit further literal header values with indexing for the
-     same value.
-
-The encoder MUST NOT emit a delete instruction until the insertion
-instruction has completed.  A decoder that receives a delete instruction
-for a vacant table entry MUST consider this to be a fatal error.
+first time the indexed entry is assigned.  An encoder MAY repeat
+the insertion instruction in other frames rather than leveraging
+the index while it waits for the frame to arrive.
 
 When the sender wishes to delete an
 inserted value, it flows through the following set of states:
@@ -180,6 +159,11 @@ inserted value, it flows through the following set of states:
      frame acknowledging the delete, it no longer counts the size
      of the deleted entry against the table size and MAY emit
      insert instructions for the field with a new value.
+
+The decoder can receive a delete instruction for a vacant table
+entry. A decoder MUST NOT consider this to be an error, but MUST
+handle the delete as usual even while waiting for the definition
+to arrive.
      
 ## Changes to Binary Format
 
@@ -282,21 +266,14 @@ changed since the last frame.
 The QPACK-ACK frame defines no flags and consists of a bitmap.  The
 first bit in the bitmap reflects the first index after the static
 table (currently 62), and each successive bit indicates the next
-integer value.  Each bit MUST be set if the index currently has a
-value assigned (whether active or pending delete) and MUST be unset
+integer value.  Each bit MUST be set if the indexed entry has had
+a delete complete since the preceding QUIC frame and MUST be unset
 otherwise.  Indices beyond the end of the QPACK-ACK frame are assumed
 to be unset.
 
-Upon receipt, an encoder uses the table to update the following
-information:
-
-  - Newly-inserted items can be confirmed to have been added,
-    and can be leveraged without concern of head-of-line blocking,
-    or can be deleted.
-  - Items which have been deleted can be confirmed removed, allowing
-    the encoder to safely reuse the index and the memory space for
-    new values.
-
+Upon receipt, an encoder uses the table to confirm which items have been
+deleted. At this point, the space can be recovered by the encoder and the
+encoder can safely reuse the index for future insertions.
 
     
 # HTTP over QUIC Mapping
@@ -477,7 +454,11 @@ a connection error of type FRAME_SIZE_ERROR.
 
 ### SETTINGS
 
-The SETTINGS frame in QUIC will be as defined in 
+The EXTENDED_SETTINGS frame as defined in [I-D.draft-bishop-httpbis-extended-settings]
+will be renamed SETTINGS and will replace the HTTP/2 SETTINGS frame.
+
+**TODO:**  SETTINGS_ACK and stream state.  Do we need to emit the ACK
+on every active stream?  What about idle streams and in-flight data?
 
 ### Other frames not mentioned
 
@@ -486,9 +467,6 @@ framing is used as for other streams.  SETTINGS frames remain
 on stream 3, as do any other HTTP/2 stream-zero frames.
 This enables HTTP/2 extension frames which do not have a hard cross-stream
 ordering requirement to continue to function.
-
-**TODO:**  SETTINGS_ACK and stream state.  Do we need to emit the ACK
-on every active stream?  What about idle streams and in-flight data?
 
 ## HTTP Message Exchanges 
 
@@ -575,7 +553,7 @@ gleefully stolen from:
   - Patrick McManus
   - Martin Thomson
   - Charles 'Buck' Krasic
-
+  - Kyle Rose
 
 --- back
 

@@ -155,19 +155,18 @@ length-prefixed binary value.
 ~~~~~~~~~~~~~~~
 0                   1                   2                   3
 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
-+-------------------------------+---------------+---------------+
-|        Identifier (16)        |         Length (16)           |
-+-----------------------------------------------+---------------+
++-------------------------------+-+-------------+---------------+
+|        Identifier (16)        |B|        Length (15)          |
++---------------------------------|-------------+---------------+
 |                          Contents (?)                       ...
 +---------------------------------------------------------------+
 ~~~~~~~~~~~~~~~
 {: #fig-ext-settings title="EXTENDED_SETTINGS frame payload"}
 
-In some cases (e.g. indications of feature support), the presence and 
-acknowledgement of a setting may be sufficient, and a value superfluous. 
-In order to accomodate such cases, implementations MUST track 
-identifiers with zero-length values differently from never-seen 
-identifiers.  The initial value of each setting is "never-seen."
+A zero-length content indicates that the setting value is a Boolean
+given by the B bit.  If Length is not zero, the B bit MUST be zero,
+and MUST be ignored by receivers.  The initial value of each setting
+is "false."
 
 An implementation MUST ignore the contents for any EXTENDED_SETTINGS
 identifier it does not understand.

@@ -6,7 +6,7 @@ date: 2016
 category: std
 
 ipr: trust200902
-area: General
+area: Transport
 workgroup: QUIC Working Group
 keyword: Internet-Draft
 

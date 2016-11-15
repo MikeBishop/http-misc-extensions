@@ -1,7 +1,7 @@
 ---
-title: QPACK - Header Compression for HTTP over QUIC
+title: HTTP over QUIC - Mapping and Header Compression
 abbrev: QPACK
-docname: draft-bishop-quic-qpack-latest
+docname: draft-bishop-quic-http-and-qpack-latest
 date: 2016
 category: std
 
@@ -23,13 +23,14 @@ author:
 normative:
   RFC7230:
   RFC7231:
+  RFC7540:
   RFC2119:
   RFC7541:
   I-D.hamilton-quic-transport-protocol:
-  I-D.shade-quic-http2-mapping:
+  I-D.bishop-httpbis-extended-settings:
 
 informative:
-  RFC7540:
+  I-D.shade-quic-http2-mapping:
 
 
 
@@ -47,11 +48,12 @@ compression.
 
 --- middle
 
-# Introduction        {#problems}
+# Introduction  {#problems}
 
 HPACK has a number of features that were intended to provide performance 
 advantages to HTTP/2, but which don't live well in an out-of-order 
 environment such as that provided by QUIC. 
+
 
 The largest challenge is the fact that elements are referenced by a very 
 fluid index. Not only is the index implicit when an item is added to the 
@@ -71,8 +73,10 @@ using an HTTP/2 SETTINGS value).
 
 In the following sections, this document proposes a new version of HPACK 
 which makes different trade-offs, enabling out-of-order interpretation 
-and bounded memory consumption with minimal head-of-line blocking. 
-
+and bounded memory consumption with minimal head-of-line blocking.
+None of the proposed improvements to HPACK (strongly-typed fields,
+binary compression of common header syntax) are currently included,
+but certainly could be.
 
 ## Terminology          {#Terminology}
 In this document, the key words "MUST", "MUST NOT", "REQUIRED",
@@ -93,13 +97,12 @@ arbitrary numbers greater than the last index of the static table. Each
 insert instruction will specify the index being modified. While any 
 index MAY be chosen for a new entry, smaller numbers will yield better 
 compression performance. Once an index has been assigned, its value is 
-immutable for the lifetime of that dynamic table. 
+immutable for the lifetime of that dynamic table.
 
-(Note: Changing values re-introduces strong ordering 
-requirements this draft attempts to eliminate. 
-Deleting entries is effectively a change of the value to null.
-Suggestions for adding 
-this feature without such requirements are welcome.) 
+In order to improve resiliency to reordering, an encoder MAY send
+multiple insert instructions for the same value to the same index.
+However, any attempt to insert a different value to an occupied
+index is a fatal error.
 
 The dynamic table is still constrained to the size specified by the 
 receiver. An attempt to add a header to the dynamic table which causes 
@@ -113,31 +116,71 @@ and treat expiration of the timer as a decoding error. However, if the
 implementation chooses not to abort the connection, the remainder of the 
 header block MUST be decoded and the output discarded. 
 
-### Dynamic table management and phase
+### Dynamic table state synchronization
 
 No entries are evicted from the dynamic table. Size management is 
-achieved using successive phases of dynamic table which evolve from each 
-other. 
+purely the responsibility of the sender, which MUST NOT exceed the
+declared memory size of the receiver.  The receiver will
+periodically summarize its current understanding of the header
+table in a QPACK-ACK frame, which permits the sender to update
+its state as needed.
 
-Each QPACK frame will contain two bits of phase, the sending phase and 
-the received phase. When the dynamic table is approaching the maximum 
-size, the encoder condenses the entries by sending a PHASE_CHANGE 
-command (see {{phase-change}}). The phase change creates a new dynamic 
-table containing a subset of entries from the previous phase's dynamic 
-table. The encoder then discards the previous phase's dynamic table and 
-uses the new table as the basis for the remainder of the current frame and
-all future QPACK frames.
+Both sender and receiver will maintain a count of references to
+the indexed entry.  This count includes:
 
-The decoder will be unable to process any index references from the new 
-phase until it has received the QPACK frame containing the phase-change 
-instruction.
+  - Insertions to the field, both the initial and any redundant
+    indexed literal emissions.
+  - Literal values which use the indexed entry to provide the
+    header name
+  - Explicit emissions of the indexed value
+  
+The sender MUST consider memory as committed beginning with the
+first time the indexed entry is assigned.  A newly-added entry
+proceeds through the following state:
 
-When the decoder has received and processed all QPACK frames generated 
-using the previous phase, it discards the previous phase's dynamic table 
-and changes the value of its received phase bit. An encoder MUST NOT 
-generate a new PHASE_CHANGE command until it has received a QPACK frame 
-with a received phase matching the updated sending phase value. 
+  1. **Insert requested.**  The encoder emits at least one
+     identical literal header value with indexing creating the
+     dynamic table entry. At this point, it begins counting the
+     new entry against the maximum table size.
+     
+  2. **Insert acknowledged.**  When the decoder has received
+     a literal header value with indexing creating the dynamic
+     table entry, it MUST emit a QPACK-ACK frame showing the
+     entry as occupied.
+     
+  3. **Insert completed.**  When the encoder has received a
+     QPACK-ACK frame acknowledging the insertion, it SHOULD NOT
+     emit further literal header values with indexing for the
+     same value.
 
+The encoder MUST NOT emit a delete instruction until the insertion
+instruction has completed.  A decoder that receives a delete instruction
+for a vacant table entry MUST consider this to be a fatal error.
+
+When the sender wishes to delete an
+inserted value, it flows through the following set of states:
+
+  1. **Delete requested.**  The sender emits a delete instruction
+     including the terminal value of the reference counter.  The
+     sender MUST NOT reference the entry in any subsequent frame
+     until this state machine has completed and MUST continue to
+     include the entry in its calculation of consumed memory.
+     
+  2. **Delete pending.**  The receiver receives the delete instruction
+     and compares the sender's counter with its own.  If the receiver's
+     counter is less than the sender's, it stores the sender's counter
+     and waits for other QPACK frames to arrive.
+     
+  3. **Delete acknowledged.**  The receiver has received all QPACK
+     frames which reference the deleted value, and can safely delete
+     the entry.  The receiver SHOULD promptly emit a QPACK-ACK frame,
+     but MAY delay briefly waiting for other pending deletes as well.
+     
+  4. **Delete completed.**  When the sender receives a QPACK-ACK
+     frame acknowledging the delete, it no longer counts the size
+     of the deleted entry against the table size and MAY emit
+     insert instructions for the field with a new value.
+     
 ## Changes to Binary Format
 
 ### Literal Header Field Representation
@@ -183,7 +226,7 @@ a new entry into the dynamic table.
 A literal header field with incremental indexing representation starts 
 with the '01' 2-bit pattern, followed by the new index of the header 
 represented as an integer with a 6-bit prefix. This value is always 
-greater than the number of entries in the static table. 
+greater than the number of entries in the static table.
 
 If the header field name matches the header field name of an entry 
 stored in the static table or the dynamic table, the header field name 
@@ -196,82 +239,67 @@ Otherwise, the header field name is represented as a string literal
 followed by the header field name. 
 
 Either form of header field name representation is followed by the 
-header field value represented as a string literal (see Section 5.2). 
+header field value represented as a string literal (see Section 5.2).
 
-### Dynamic Table Phase Change {#phase-change}
+An encoder MUST NOT attempt to place a value at an index not known to
+be vacant.  An encoder MAY insert the same value to the same vacant slot
+multiple times in different frames, to reduce the risk of blocking from
+out-of-order frame interpretation.  However, a decoder MUST treat the attempt
+to insert a different header field into an occupied slot as a fatal error.
 
-(This section replaces [RFC7541], Section 6.3.)
+### Deletion
 
-A "Phase Change" instruction creates a new dynamic table consisting of entries
-from the previous phase's dynamic table.  The new dynamic table begins empty,
-and the insertion index is placed at the first index after the static table.
-The instructions are then processed in order to populate the new dynamic table.
+(This section replaces [RFC7541], Section 6.2.3.)
 
-The Phase Change instruction begins with the count of QPACK frames
-which have already been encoded using the previous phase, followed
-by a sequence of instructions for generating the new dynamic table as follows:
+**DISCUSS:**  I stole the never-indexed instruction code to
+avoid renumbering *all* the instructions to fit a new one.
+If we think we still need this in QUIC, we'll have to
+do the renumbering later.
 
-~~~~~~~~~~
      0   1   2   3   4   5   6   7
    +---+---+---+---+---+---+---+---+
-   | 0 | 0 | 1 |  Phase Count (5+) |
-   +---+---------------------------+
-   | Instructions...               |
-   +---+---------------------------+   
+   | 0 | 0 | 0 | 1 | RefCount (4+) |
+   +---+---+---+---+---------------+
+   |          Index (8+)           |
+   +-------------------------------+
 ~~~~~~~~~~
-{: title="Phase Change"}
+{: title="Header Field Deletion"}
 
-The count of preceding frames, given as a 5-bit prefix integer, does not include
-the frame containing the current Phase Change instruction or the frame containing
-the previous Phase Change instruction.
+The sender may delete an entry in the dynamic header table at any
+time in order to stay below the receiver's declared memory boundary.
+This instruction tells the receiver that they should prepare to delete
+the specified entry after all preceding frames referencing it have
+been received.  The delete instruction includes the count of such
+frames to facilitate the receiver's garbage collection process.
 
-#### Insert single entry from previous phase
+### The QPACK-ACK frame
 
-~~~~~~~~~~
-     0   1   2   3   4   5   6   7
-   +---+---+---+---+---+---+---+---+
-   | 1 |        Index (7+)         |
-   +---+---------------------------+
-~~~~~~~~~~
-{: title="Single Entry Insertion"}
+Each peer MUST periodically emit a QPACK-ACK frame (0xTBD) on QUIC
+stream 3 to reflect the current state of its header table.  A peer
+MAY omit sending a new QPACK-ACK frame if the dynamic table has not
+changed since the last frame.
 
-The entry with the specified entry from the previous phase's dynamic table
-is inserted into the new phase's dynamic table at the current insertion point
-and the insertion index is incremented.
+The QPACK-ACK frame defines no flags and consists of a bitmap.  The
+first bit in the bitmap reflects the first index after the static
+table (currently 62), and each successive bit indicates the next
+integer value.  Each bit MUST be set if the index currently has a
+value assigned (whether active or pending delete) and MUST be unset
+otherwise.  Indices beyond the end of the QPACK-ACK frame are assumed
+to be unset.
 
-#### Insert multiple entries from previous phase
+Upon receipt, an encoder uses the table to update the following
+information:
 
-~~~~~~~~~~
-     0   1   2   3   4   5   6   7
-   +---+---+---+---+---+---+---+---+
-   | 0 | 1 |      Count (6+)       |
-   +---+---------------------------+
-   |        Starting Index (8+)    |
-   +---+---------------------------+
-~~~~~~~~~~
-{: title="Multiple Entry Insertion"}
+  - Newly-inserted items can be confirmed to have been added,
+    and can be leveraged without concern of head-of-line blocking,
+    or can be deleted.
+  - Items which have been deleted can be confirmed removed, allowing
+    the encoder to safely reuse the index and the memory space for
+    new values.
 
-A series of contiguous entries, given by Count and beginning at Starting Index, are read from the previous
-phase's dynamic table.  These entries are added in the new phase's dynamic
-table at the insertion point and the insertion index is incremented.
 
-#### Complete phase change
-
-~~~~~~~~~~
-     0   1   2   3   4   5   6   7
-   +---+---+---+---+---+---+---+---+
-   |               0               |
-   +---+---+---+---+---+---+---+---+
-~~~~~~~~~~
-{: title="End of Phase Change"}
-
-The encoder has discarded the previous dynamic table state and will use 
-the newly-expressed state of the dynamic table for the remainder of this 
-QPACK frame and for all future QPACK frames. The decoder should likewise 
-discard the previous dynamic table once it has processed the specified 
-number of frames using the previous phase. 
-
-# HTTP over QUIC Mapping Changes
+    
+# HTTP over QUIC Mapping
 
 [I-D.shade-quic-http2-mapping] refers to QUIC Stream 3 as carrying
 "headers," but more accurately, it carries a nearly-complete HTTP/2 session,
@@ -283,9 +311,33 @@ anywhere no QUIC-specific approach had yet been added.  A primary driver of
 this is the need for in-order reliable delivery of frames carrying HPACK data
 (HEADERS, CONTINUATION, PUSH_PROMISE).
 
+While the ability to reuse HTTP/2 framing is useful, the double-mux layer
+is unwieldy and has proved unpopular in the working group.  This section
+presents an alternate mapping preserving some HTTP/2 code, but delegating
+all multiplexing to the QUIC layer.
+
 QPACK would permit header data to be on-stream with the request/response bodies,
 but some framing is still required.  It would be possible (and perhaps desirable)
 to introduce a simplified version of HTTP/2's framing on each QUIC stream.
+
+## Stream usage {#stream-usage}
+
+In both QUIC and HTTP/2, odd-numbered streams are client-initiated, while
+even-numbered streams are server-initiated.  A single HTTP transaction
+spans two streams, differentiated by the next stream bit.  This means that
+the client's first request occurs on QUIC streams 5 and 7, the second on
+stream 9 and 11, and so on.  This amounts to the second least-significant
+bit differentiating the two streams in a request.
+
+The payload of each frame type is unmodified from HTTP/2 unless otherwise noted.
+Frames which would be sent on stream zero in HTTP/2 are sent on QUIC stream 3.
+
+Because stream creation does not depend on particular frames, the requirement
+that a stream begin only with HEADERS is omitted.
+
+The second stream is used to carry any message payload, eliminating the
+DATA frame.  The first stream is the request control stream and is used to
+carry all other frames which would have been on-stream in HTTP/2.
 
 ## On-Stream Framing Definition
 
@@ -295,9 +347,7 @@ Because the frames do not block multiplexing (QUIC's multiplexing occurs below t
 the support for variable-maximum-length packets can be removed.  Because stream termination
 is handled by QUIC, an END_STREAM flag is not required.
 
-The payload of each frame type is unmodified from HTTP/2 unless otherwise noted.
-
-On QUIC streams other than Stream 1, the format is as follows:
+On QUIC streams other than Stream 1, the general frame format is as follows:
 
 ~~~~~~~~~~
      0   1   2   3   4   5   6   7
@@ -314,35 +364,30 @@ On QUIC streams other than Stream 1, the format is as follows:
 ~~~~~~~~~~
 {: title="HTTP/QUIC frame format"}
 
-The frames currently defined are described in this section:
+The fields are defined as in [RFC7540].  The frames currently defined are
+described in this section:
 
 ### DATA
 
-DATA frames (type=0x0) convey arbitrary, variable-length sequences of 
-octets which make up the HTTP request or response payloads. Padding
-MUST NOT be used.  No flags are defined.
+DATA frames (type=0x0) do not exist.
 
 ### HEADERS
 
 The HEADERS frame (type=0x1) is used to carry part of a header set,
 compressed using QPACK ({QPACK}).  The PRIORITY-equivalent regions
-have been removed, since a stream MAY begin with a PRIORITY frame.
+have been removed, since a stream MAY begin with a PRIORITY frame
+and the size of the QUIC stream format requires changes to how
+these fields are handled.
 
 Padding MUST NOT be used.  The flags defined are:
 
- - Sending phase (0x1): The QPACK phase in use by the sender's encoder 
-when it began generating this frame. 
-
-- Receiving phase (0x2): The oldest QPACK phase still in use by the 
-sender's decoder when it began generating this frame. 
-
 - End Header Block (0x4): This frame concludes a header block. 
 
-The next frame on the same stream after a HEADERS frame without the EHB flag set MUST be 
-another HEADERS frame. A receiver MUST treat the receipt of any other 
-type of frame as a connection error. (Note that QUIC can intersperse 
+The next frame on the same stream after a HEADERS frame without the EHB
+flag set MUST be another HEADERS frame. A receiver MUST treat the receipt
+of any other type of frame as a stream error. (Note that QUIC can intersperse 
 data from other streams between frames, or even during transmission of 
-frames, so multiplexing is not blocked.)
+frames, so multiplexing is not blocked by this requirement.)
 
 A full header block is contained in a sequence of zero or more HEADERS 
 frames without EHB set, followed by a HEADERS frame with EHB set. 
@@ -350,8 +395,8 @@ frames without EHB set, followed by a HEADERS frame with EHB set.
 HEADERS frames from various streams may be processed by the QPACK 
 decoder in any order, completely or partially. It is not necessary to 
 withhold decoding results until the end of the header block has arrived. 
-However, depending on the contents, the processing of a frame might not 
-complete until other QPACK frames have arrived. The results of decoding 
+However, depending on the contents, the processing of one frame might
+depend on other QPACK frames. The results of decoding 
 MUST be emitted in the same order as the HEADERS frames were placed on 
 the stream.
 
@@ -359,24 +404,80 @@ the stream.
 
 The PUSH_PROMISE frame (type=0x02) is used to carry a request header set 
 from server to client, as in HTTP/2. It contains the same flags as 
-HEADERS, plus: 
-
-- Promised Stream Size (0x08): Indicates whether Promised Stream ID is 
-16 or 32-bits long.
+HEADERS.
 
 The payload contains a QPACK headers block encoding 
-the request whose response is promised, preceded by a 16-bit or 32-bit 
-long Stream ID indicating the QUIC stream on which the response headers 
-and body will be sent.
+the request whose response is promised, preceded by a 32-bit 
+Stream ID indicating the QUIC stream on which the response headers 
+will be sent.  (The response body stream is implied by the headers stream,
+as defined in {{stream-usage}}.)
 
-TODO:  QUIC stream space may be enlarged; would need to redefine
+**TODO:**  QUIC stream space may be enlarged; would need to redefine
 Promised Stream field in this case.
 
 ### PRIORITY
 
-The contents of the HTTP/2 PRIORITY frame are used unmodified.
+The PRIORITY frame (type=0x2) specifies the sender-advised priority
+of a stream and is sent on Stream 3.  It can refer to a stream in any state,
+including idle or closed streams.
 
-TODO:  QUIC stream space is larger -- need to redefine the Dependency field.
+
+~~~~~~~~~~
+    +---------------------------------------------------------------+
+    |                  Prioritized Stream (32)                      |
+    +---------------------------------------------------------------+
+    |                   Dependent Stream (32)                       |
+    +---------------+-----------------------------------------------+
+    |   Weight (8)  |
+    +---------------+
+~~~~~~~~~~
+{: title="PRIORITY Frame Payload"}
+
+The payload of a PRIORITY frame contains the following fields:
+
+Prioritized Stream:
+: The 32-bit stream identifier for the stream
+whose priority is being modified.
+
+Stream Dependency:  
+:The 32-bit stream identifier for the stream that
+      this stream depends on.
+
+Weight:
+:An unsigned 8-bit integer representing a priority weight for
+      the stream (see Section 5.3).  Add one to the value to obtain a
+      weight between 1 and 256.
+
+The PRIORITY frame defines one flag:
+
+EXCLUSIVE (0x01):  
+:Indicates that the stream dependency is
+      exclusive (see [RFC7540] Section 5.3).
+
+If a PRIORITY frame
+is received which attempts to modify a stream which is
+not a request control scheme, the recipient MUST
+respond with a connection error (Section 5.4.1) of type
+PROTOCOL_ERROR.
+
+The PRIORITY frame can affect a stream in any state.  Note that this frame could arrive after
+processing or frame sending has completed, which would cause it to
+have no effect on the identified stream.  For a stream that is in the
+"half-closed (remote)" or "closed" state, this frame can only affect
+processing of the identified stream and its dependent streams; it
+does not affect frame transmission on that stream.
+
+The PRIORITY frame can create a dependency on a stream in the "idle" or "closed"
+state.  This allows for the reprioritization of a group of dependent
+streams by altering the priority of an unused or closed parent
+stream.
+
+A PRIORITY frame with a length other than 9 octets MUST be treated as
+a connection error of type FRAME_SIZE_ERROR.
+
+### SETTINGS
+
+The SETTINGS frame in QUIC will be as defined in 
 
 ### Other frames not mentioned
 
@@ -386,49 +487,43 @@ on stream 3, as do any other HTTP/2 stream-zero frames.
 This enables HTTP/2 extension frames which do not have a hard cross-stream
 ordering requirement to continue to function.
 
+**TODO:**  SETTINGS_ACK and stream state.  Do we need to emit the ACK
+on every active stream?  What about idle streams and in-flight data?
+
 ## HTTP Message Exchanges 
 
-A client sends an HTTP request on a new QUIC stream. A server sends an 
-HTTP response on the same stream as the request. 
+A client sends an HTTP request on a new pair of QUIC stream. A
+server sends an HTTP response on the same streams as the request. 
 
-An HTTP message (request or response) consists of: 
+An HTTP message (request or response) consists of:
 
 1. for a response only, zero or more header blocks (a sequence of 
-HEADERS frames with End Header Block set on the last) containing the 
-message headers of informational (1xx) HTTP responses (see [RFC7230], 
-Section 3.2 and [RFC7231], Section 6.2), 
+HEADERS frames with End Header Block set on the last) on the control stream
+containing the message headers of informational (1xx) HTTP responses
+(see [RFC7230], Section 3.2 and [RFC7231], Section 6.2), 
 
-2. one header block containing the message headers (see [RFC7230], 
-Section 3.2),
+2. one header block on the control stream containing the message headers
+(see [RFC7230], Section 3.2),
 
-3. zero or more DATA frames containing the payload body (see [RFC7230], 
-Section 3.3), and 
+3. the payload body (see [RFC7230], Section 3.3), sent on the data stream 
 
-4. optionally, one header block containing the trailer-part, if present 
-(see [RFC7230], Section 4.1.2). 
+4. optionally, one header block on the control stream containing the
+trailer-part, if present (see [RFC7230], Section 4.1.2). 
 
-Following the last frame in the sequence, the QUIC stream is half-closed 
-in the sender's direction. 
-
-DATA frames are used to carry message payloads. The "chunked" transfer 
-encoding defined in Section 4.1 of [RFC7230] MUST NOT be used. 
+If the message does not contain a body, the corresponding data stream
+MUST still be half-closed without transferring any data. The "chunked"
+transfer encoding defined in Section 4.1 of [RFC7230] MUST NOT be used. 
 
 Trailing header fields are carried in a header block following the body. 
 Such a header block is a sequence of HEADERS frames with End Header 
 Block set on the last frame. Header blocks after the first but before 
-the end of the stream are invalid and MUST be discarded (after decoding, 
-to maintain QPACK decoder state). 
+the end of the stream are invalid.  These MUST be decoded to maintain
+QPACK decoder state, but the resulting output MUST be discarded.
 
-A header block can only appear at the start or end of a stream. An 
-endpoint that receives a HEADERS frame after receiving a final (non- 
-informational) status code MUST treat the corresponding request or 
-response as malformed (Section 8.1.2.6). 
-
-An HTTP request/response exchange fully consumes a single stream. After 
-sending a request, a client closes the stream for sending; after sending 
-a response, the server closes its stream for sending and the QUIC stream 
-is fully closed. A response starts with a HEADERS frame and ends with a 
-frame bearing END_STREAM, which places the stream in the "closed" state. 
+An HTTP request/response exchange fully consumes a pair of streams. After 
+sending a request, a client closes the streams for sending; after sending 
+a response, the server closes its streams for sending and the QUIC streams
+are fully closed.
 
 A server can send a complete response prior to the client sending an 
 entire request if the response does not depend on any portion of the 
@@ -444,43 +539,26 @@ reasons.
 
 While QPACK is designed to minimize head-of-line blocking between 
 streams on header decoding, there are some situations in which lost or 
-delayed packets can block decoding of subsequent frames: 
+delayed packets can still impact the performance of header compression.
 
-- References to indexed entries will block if the frame containing the 
-entry definition is lost or delayed.
+References to indexed entries will block if the frame containing the 
+entry definition is lost or delayed.  Encoders MAY choose to trade off
+compression efficiency and avoid blocking by repeating the
+literal-with-indexing instruction rather than referencing the
+dynamic table until the insertion is known to be complete.
 
-- If the frame initiating a phase change is lost or delayed, the decoder 
-cannot process any indexed entries from the new phase until it arrives. 
-
-Encoders MAY choose to avoid references to these entries until the 
-packet containing the definiting frame has been acknowledged by the 
-decoder. In both cases, the resulting literal values used instead will 
-reduce compression efficiency, but avoid blocking either the encoder or 
-decoder. 
-
-If frames from the previous phase have been lost or delayed, the decoder 
-will delay acknowledging and completing a phase change. The encoder 
-can find itself in a state where no new entries can be added to the 
-dynamic table. The encoder is not blocked, but will need to use literal 
-values until the phase change completes. 
-
-Memory-constrained implementations MAY delay processing of *all* QPACK 
-frames from the new phase until the previous phase has completed, in 
-order to avoid maintaining two tables in parallel. Doing so would 
-introduce a connection-wide delay, so encoders SHOULD minimize the 
-frequency of phase changes. 
+Delayed frames which prevent deletes from completing can prevent the
+encoder from adding any new entries due to the maximum table size.
+This does not block the encoder from continuing to make requests,
+but could sharply limit compression performance.
+Encoders would be well-served to delete entries in advance of encountering
+the table maximum.  Decoders SHOULD be prompt about emitting QPACK-ACK
+frames to enable the sender to recover the table space.
 
 # Security Considerations
 
 The security considerations for QPACK are believed to be the same
-as for HPACK, with one addition.  An encoder could maliciously or
-mistakenly claiming to have encoded more frames than it has
-actually sent while initiating
-a phase-change.  Decoders SHOULD defend themselves against such 
-implementations by considering it a connection error if the phase
-change cannot be completed within a reasonable number of RTTs,
-or if the transport reports that there is no unreceived data
-still pending.
+as for HPACK.
 
 # IANA Considerations
 
@@ -488,16 +566,16 @@ This document currently makes no request of IANA, but probably should.
 
 # Acknowledgements {#ack}
 
-This draft draws heavily on the text of [RFC7540], [RFC7541],
-and [I-D.shade-quic-http2-mapping].  The indirect input
-of those authors is gratefully acknowledged, as well as ideas
-stolen from:
+This draft draws heavily on the text of [RFC7540] and [RFC7541],
+as well as the ideas of [I-D.shade-quic-http2-mapping].  The indirect
+input of those authors is gratefully acknowledged, as well as ideas
+gleefully stolen from:
 
   - Jana Iyengar
   - Patrick McManus
   - Martin Thomson
   - Charles 'Buck' Krasic
 
---- back
 
+--- back
 

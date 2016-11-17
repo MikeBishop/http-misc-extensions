@@ -54,7 +54,6 @@ HPACK has a number of features that were intended to provide performance
 advantages to HTTP/2, but which don't live well in an out-of-order 
 environment such as that provided by QUIC. 
 
-
 The largest challenge is the fact that elements are referenced by a very 
 fluid index. Not only is the index implicit when an item is added to the 
 header table, the index will change without notice as other items are 
@@ -240,6 +239,7 @@ avoid renumbering *all* the instructions to fit a new one.
 If we think we still need this in QUIC, we'll have to
 do the renumbering later.
 
+~~~~~~~~~~
      0   1   2   3   4   5   6   7
    +---+---+---+---+---+---+---+---+
    | 0 | 0 | 0 | 1 | RefCount (4+) |
@@ -414,43 +414,42 @@ The payload of a PRIORITY frame contains the following fields:
 
 Prioritized Stream:
 : The 32-bit stream identifier for the stream
-whose priority is being modified.
+  whose priority is being modified.
 
 Stream Dependency:  
-:The 32-bit stream identifier for the stream that
-      this stream depends on.
+: The 32-bit stream identifier for the stream that
+  this stream depends on.
 
 Weight:
-:An unsigned 8-bit integer representing a priority weight for
-      the stream (see Section 5.3).  Add one to the value to obtain a
-      weight between 1 and 256.
+: An unsigned 8-bit integer representing a priority weight for
+  the stream (see Section 5.3).  Add one to the value to obtain a
+  weight between 1 and 256.
 
 The PRIORITY frame defines one flag:
 
 EXCLUSIVE (0x01):  
-:Indicates that the stream dependency is
+: Indicates that the stream dependency is
       exclusive (see [RFC7540] Section 5.3).
 
-If a PRIORITY frame
-is received which attempts to modify a stream which is
-not a request control scheme, the recipient MUST
-respond with a connection error (Section 5.4.1) of type
-PROTOCOL_ERROR.
+If a PRIORITY frame is received which attempts to modify a stream which 
+is not a request control scheme, the recipient MUST respond with a 
+connection error (Section 5.4.1) of type PROTOCOL_ERROR. 
 
-The PRIORITY frame can affect a stream in any state.  Note that this frame could arrive after
-processing or frame sending has completed, which would cause it to
-have no effect on the identified stream.  For a stream that is in the
-"half-closed (remote)" or "closed" state, this frame can only affect
-processing of the identified stream and its dependent streams; it
-does not affect frame transmission on that stream.
+The PRIORITY frame can affect a stream in any state. Note that this 
+frame could arrive after processing or frame sending has completed, 
+which would cause it to have no effect on the identified stream. For a 
+stream that is in the "half-closed (remote)" or "closed" state, this 
+frame can only affect processing of the identified stream and its 
+dependent streams; it does not affect frame transmission on that stream. 
 
-The PRIORITY frame can create a dependency on a stream in the "idle" or "closed"
-state.  This allows for the reprioritization of a group of dependent
-streams by altering the priority of an unused or closed parent
-stream.
+The PRIORITY frame can create a dependency on a stream in the "idle" or 
+"closed" state. This allows for the reprioritization of a group of 
+dependent streams by altering the priority of an unused or closed parent 
+stream. 
 
-A PRIORITY frame with a length other than 9 octets MUST be treated as
-a connection error of type FRAME_SIZE_ERROR.
+A PRIORITY frame with a length other than 9 octets MUST be treated as a 
+connection error of type FRAME_SIZE_ERROR. 
+
 
 ### SETTINGS
 

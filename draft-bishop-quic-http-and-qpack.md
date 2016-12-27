@@ -234,7 +234,7 @@ a new entry into the dynamic table.
 A literal header field with incremental indexing representation starts 
 with the '01' 2-bit pattern, followed by the new index of the header 
 represented as an integer with a 6-bit prefix. This value is always 
-greater than the number of entries in the static table.
+greater than the number of entries in the static table. 
 
 If the header field name matches the header field name of an entry 
 stored in the static table or the dynamic table, the header field name 
@@ -242,18 +242,19 @@ can be represented using the index of that entry. In this case, the
 index of the entry is represented as an integer with an 8-bit prefix 
 (see Section 5.1 of [RFC7231]). This value is always non-zero. 
 
-Otherwise, the header field name is represented as a string literal 
-(see Section 5.2 of [RFC7231]). A value 0 is used in place of the 8-bit index, 
-followed by the header field name. 
+Otherwise, the header field name is represented as a string literal (see 
+Section 5.2 of [RFC7231]). A value 0 is used in place of the 8-bit 
+index, followed by the header field name. 
 
 Either form of header field name representation is followed by the 
-header field value represented as a string literal (see Section 5.2).
+header field value represented as a string literal (see Section 5.2). 
 
-An encoder MUST NOT attempt to place a value at an index not known to
-be vacant.  An encoder MAY insert the same value to the same vacant slot
-multiple times in different frames, to reduce the risk of blocking from
-out-of-order frame interpretation.  However, a decoder MUST treat the attempt
-to insert a different header field into an occupied slot as a fatal error.
+An encoder MUST NOT attempt to place a value at an index not known to be 
+vacant. An encoder MAY insert the same value to the same vacant slot 
+multiple times in different frames, to reduce the risk of blocking from 
+out-of-order frame interpretation. However, a decoder MUST treat the 
+attempt to insert a different header field into an occupied slot as a 
+fatal error.
 
 ### Deletion
 
@@ -286,44 +287,45 @@ frames to facilitate the decoder's garbage collection process.
 Each peer MUST periodically emit a QPACK-ACK frame (0xTBD) on the 
 connection control stream to acknowledge deletions. A peer MAY omit 
 sending a new QPACK-ACK frame if no deletions have completed since the 
-last frame.
+last frame. 
 
-The QPACK-ACK frame defines no flags and consists of a bitmap.  The
-first bit in the bitmap reflects the first index after the static
-table (currently 62), and each successive bit indicates the next
-integer value.  Each bit MUST be set if the indexed entry has had
-a deletion complete since the preceding QPACK-ACK frame and MUST be unset
-otherwise.  Indices beyond the end of the QPACK-ACK frame are assumed
-to be unset.
+The QPACK-ACK frame defines no flags and consists of a bitmap. The first 
+bit in the bitmap reflects the first index after the static table 
+(currently 62), and each successive bit indicates the next integer 
+value. Each bit MUST be set if the indexed entry has had a deletion 
+complete since the preceding QPACK-ACK frame and MUST be unset 
+otherwise. Indices beyond the end of the QPACK-ACK frame are assumed to 
+be unset. 
 
-Upon receipt, an encoder uses the table to confirm which items have been
-deleted. At this point, the space can be recovered by the encoder and the
-encoder can safely reuse the index for future insertions.
+Upon receipt, an encoder uses the table to confirm which items have been 
+deleted. At this point, the space can be recovered by the encoder and 
+the encoder can safely reuse the index for future insertions. 
+
 
     
 # Performance Considerations
 
 While QPACK is designed to minimize head-of-line blocking between 
 streams on header decoding, there are some situations in which lost or 
-delayed packets can still impact the performance of header compression.
+delayed packets can still impact the performance of header compression. 
 
 References to indexed entries will block if the frame containing the 
-entry definition is lost or delayed.  Encoders MAY choose to trade off
-compression efficiency and avoid blocking by repeating the
-literal-with-indexing instruction rather than referencing the
-dynamic table until the insertion is known to be complete.
+entry definition is lost or delayed. Encoders MAY choose to trade off 
+compression efficiency and avoid blocking by repeating the 
+literal-with-indexing instruction rather than referencing the dynamic 
+table until the insertion is known to be complete. 
 
-Delayed frames which prevent deletes from completing can prevent the
-encoder from adding any new entries due to the maximum table size.
-This does not block the encoder from continuing to make requests,
-but could sharply limit compression performance.
-Encoders would be well-served to delete entries in advance of encountering
-the table maximum.  Decoders SHOULD be prompt about emitting QPACK-ACK
-frames to enable the encoder to recover the table space.
+Delayed frames which prevent deletes from completing can prevent the 
+encoder from adding any new entries due to the maximum table size. This 
+does not block the encoder from continuing to make requests, but could 
+sharply limit compression performance. Encoders would be well-served to 
+delete entries in advance of encountering the table maximum. Decoders 
+SHOULD be prompt about emitting QPACK-ACK frames to enable the encoder 
+to recover the table space. 
 
-Note that this situation can arise as well from reducing the maximum table
-size abruptly -- the encoder will find itself unable to add new entries
-for at least one RTT.
+Note that this situation can arise as well from reducing the maximum 
+table size abruptly -- the encoder will find itself unable to add new 
+entries for at least one RTT. 
 
 
 # Security Considerations

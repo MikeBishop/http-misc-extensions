@@ -98,12 +98,10 @@ MAY be sent regardless of whether the peer has sent this setting.
 
 ## EXTENDED_SETTINGS Frame  {#settings-frame}
 
-The EXTENDED_SETTINGS frame (type=0xTBD1) conveys configuration parameters that
-affect how endpoints communicate, such as preferences and constraints
-on peer behavior which occur in a form other than a 32-bit value.
-The EXTENDED_SETTINGS frame is also used to acknowledge the
-receipt of those parameters.  Individually, an EXTENDED_SETTINGS parameter can
-also be referred to as a "setting".
+The EXTENDED_SETTINGS frame (type=0xTBD1) conveys configuration parameters that 
+affect how endpoints communicate, such as preferences and constraints on peer 
+behavior which occur in a form other than a 32-bit value. Individually, an 
+EXTENDED_SETTINGS parameter can also be referred to as a "setting". 
 
 EXTENDED_SETTINGS parameters are not negotiated; they describe characteristics
 of the sending peer, which are used by the receiving peer.  However, a negotiation

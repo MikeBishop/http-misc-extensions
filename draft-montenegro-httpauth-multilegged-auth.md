@@ -42,7 +42,7 @@ This document defines multilegged authentication for a multiplexed version
 of HTTP, such as HTTP/2 ({{?RFC7540}}).
 
 Without reliable support for Kerberos and other multilegged auth 
-schemes, the reach of HTTP/2 will be greatly diminished in corporations 
+schemes, the reach of HTTP/2 is greatly diminished in corporations 
 that rely on these authentication schemes to protect their intranet 
 resources. Current implementations address this by converting attempts
 to use these authentication schemes into HTTP_1_1_REQUIRED errors.
@@ -76,7 +76,7 @@ their authentication types, and the authentication level they provide:
 alludes to authentication schemes which require multiple round trips. 
 Multilegged authentication support for multiplexing requires state to 
 associate separate request/response pairs that are part of the same 
-multilegged authentication process. 
+multilegged authentication process.
 
 
 ## Requirements Language
@@ -114,7 +114,7 @@ follows:
     |                                      |
     v                                      v
 ~~~~~
-{: title="Multilegged authentication example"}
+{: #figure-existing title="Multilegged authentication example"}
 
    1.  Server sends HTTP 401 response because the resource requested
        requires authentication.
@@ -133,19 +133,23 @@ follows:
        OK message including the requested resource.
 
 Multilegged authentication requires state to be communicated between 
-multiple streams. Network flows 3 and 4 in Figure 1 need to share state 
-in order for authentication to succeed. Some multilegged authentication 
-schemes (i.e. Kerberos and Negotiate) can authenticate either a 
-connection or individual requests, which has historically caused issues 
-with multilegged authentication in HTTP/1.1. 
+multiple streams. Network flows 3 and 4 in {{figure-existing}} need to 
+share state in order for authentication to succeed. Some multilegged 
+authentication schemes (i.e. Kerberos and Negotiate) can authenticate 
+either a connection or individual requests, which has historically 
+caused issues with multilegged authentication in HTTP/1.1. 
 
 
+# Multilegged Authentication in the Presence of Multiplexing 
 
-# Multilegged Authentication in the Presence of HTTP 2.0 Multiplexing 
+In a multiplexing protocol such as HTTP/2, multiple client requests can 
+be outstanding at one time. In the event that multiple requests receive 
+authentication challenges, the server cannot reliably determine to which 
+challenge the client is responding in subsequent authentication 
+attempts. 
 
 {{figure-proposed}} below provides a detailed breakdown of proposed 
-network flows to implement multilegged authentication for HTTP 2.0 
-multiplexing: 
+network flows to implement multilegged authentication for multiplexing: 
 
 ~~~~~
                                        Multiplexing
@@ -181,14 +185,14 @@ multiplexing:
        authentication headers.
 
        Multilegged authentication schemes could authenticate individual
-       requests or the HTTP 2.0 session.  Clients SHOULD NOT
+       requests or the HTTP/2 session.  Clients SHOULD NOT
        authenticate individual streams belonging to an authenticated
-       HTTP 2.0 session.  The following describes client behavior when
+       HTTP/2 session.  The following describes client behavior when
        attempting to authenticate streams, for which it does not know if
-       the negotiation will result in request based or HTTP 2.0 session
-       based authentication:
+       the negotiation will result in per-request or per-connection
+       authentication:
 
-       If an HTTP 2.0 session has a stream in process of authenticating
+       If an HTTP/2 session has a stream in process of authenticating
        using a multilegged authentication scheme, the client SHOULD
        queue all subsequent requests (regardless of whether they require
        authentication) on the session until the multilegged
@@ -247,7 +251,7 @@ multiplexing:
 
            Clients SHOULD assume that successful authentication with
            schemes that only support connection-based authentication
-           (i.e.  NTLM) always result in an authenticated session, even
+           (e.g.  NTLM) always results in an authenticated session, even
            if the Persisted-auth header is not present.
 
        2.  If the session was not authenticated, as indicated by the
@@ -273,7 +277,7 @@ multiplexing:
 ## Auth-ID Header and Security Context Lifetime
 
 Servers create and store security context information when they create 
-the Auth-ID header. An Auth-ID header CANNOT be reused across sessions. 
+the Auth-ID header. An Auth-ID header CANNOT be reused across sessions.
 
 The Auth-ID mapping is destroyed when the authentication process 
 completes. Completion of the authentication process can be a successful 
@@ -285,58 +289,72 @@ Servers SHOULD limit the number of incomplete security contexts per
 session, to protect against misbehaving clients that cause the server to 
 create multiple authentication contexts but never complete the 
 authentication process. Servers SHOULD define a maximum number of 
-incomplete security contexts and ignore SYN streams from misbehaving 
-clients. 
+incomplete security contexts and refuse streams from misbehaving 
+clients.
 
 Per-session security contexts are transient and servers SHOULD discard 
 them when request processing completes. There SHOULD only be one 
 complete security context open per session. 
 
 
-# Stateful Authentication to Proxies
+# Stateful Authentication via Proxies
 
-HTTP proxies MUST add a new Remote-http-version header to inform the 
-client of the HTTP version of the remote host. HTTP 2.0 clients can make 
-authentication decisions based on the HTTP version of the target server. 
-Proxy and gateway applications should take the consideration outlined by 
-{{!RFC7230}} when forwarding messages between client and servers with 
-different protocol version capabilities. 
+Typically, authenticated connections via a forward proxy will occur 
+using the CONNECT method ({{?RFC7231}}, Section 4.3.6) and the proxy 
+will not be involved in the authentication flow. This section describes 
+the situation where the proxy has access to the requests. 
 
-
-# HTTP 2.0 Client Authenticating to an HTTP 2.0 Server via Proxy
-
-Authentication from an HTTP 2.0 (or greater) client to an HTTP 2.0 
-(or greater) server will work without additional changes, other than 
-those described in the Multilegged Authentication for HTTP multiplexing 
-proposal section of this document. Proxies MUST bind the client-to-proxy 
-and proxy-to-server connections. 
+When the proxy speaks only HTTP/1.1, no multiplexing will occur and the 
+considerations in this document do not apply. Proxy and gateway 
+applications should take the consideration outlined by {{!RFC7230}} when 
+forwarding messages between client and servers with different protocol 
+version capabilities.
 
 
-## HTTP 2.0 Client Authenticating to an HTTP 1.1 Server via Proxy
+## HTTP/1.1 Client Authenticating to HTTP/2 Server via HTTP/2 Proxy
 
-HTTP 2.0 (or greater) clients that establish an authenticated 
-connection to an HTTP 1.1 server (via a proxy) SHOULD downgrade HTTP 
-version to HTTP 1.1, to avoid serialization. 
+When the proxy uses HTTP/2 to connect to the server, it MUST ensure
+that any authentication method that could result in per-connection
+authentication is used only on a separate connection for each client.
+This could require replaying requests on a new connection.
 
-HTTP 2.0 clients can multiplex streams within the authenticated HTTP 
-2.0 client-proxy session, but the proxy MUST serialize requests through 
-the authenticated HTTP 1.1 proxy-server connection. 
-
-HTTP 2.0 clients could decide to downgrade all requests requiring 
-authentication (via a proxy) to HTTP 1.1 servers or only downgrade 
-authenticated sessions, as indicated by the presence of the 
-Persisted-auth header. 
+For per-request authentication methods, the server MUST associate each
+received Auth-ID from the server to the client TCP connection and
+insert the Auth-ID header on future requests originating from the
+same connection.
 
 
-## HTTP 1.1 Client Connecting to an HTTP 2.0 Server via Proxy
+## HTTP/2 Client Authenticating to an HTTP/1.1 Server via HTTP/2 Proxy
 
-No changes required to support this scenario as HTTP 1.1 clients ignore 
-HTTP 2.0 headers. 
+HTTP/2 clients can multiplex streams within the authenticated HTTP/2
+client-proxy session, but the proxy MUST serialize requests through 
+the authenticated HTTP/1.1 proxy-server connections.  These
+authenticated connections MUST NOT be shared between different
+clients.
+
+The proxy MUST generate and insert an Auth-ID header corresponding
+to each TCP connection it maintains to the server, and add the
+Auth-ID header to any 401 response from the server.  Client requests
+which include an Auth-ID header MUST be directed to the associated
+TCP connection. Requests which do not include an Auth-ID header MAY
+be relayed over any connection.
+
+
+## HTTP/2 Client Authenticating to an HTTP/2 Server via HTTP/2 Proxy
+
+The proxy MUST bind the HTTP/2 connections it maintains with the
+client and server, using a separate connection to the server for
+each client.  The proxy MUST relay the Auth-ID and Persistent-auth
+headers unmodified between these connections.
+
 
 # Authentication and multi-host sessions
 
-The proposed authentication mechanism works only if there is a limit 
-of one unique host per HTTP 2.0 session. 
+Clients MUST NOT make requests to multiple origins when per-connection
+authentication has been established to one origin.  If an authentication
+scheme which might result in per-connection authentication is requested
+on a connection which has already been used to make requests of multiple
+origins, the client SHOULD repeat the request on a different connection.
 
 # Security Considerations
 
@@ -360,7 +378,7 @@ care to not share authenticated connections between different
 authenticated clients to the same server. If this is not honored, then 
 the server can easily lose track of security context associations. 
 
-A proxy that correctly honors client to server authentication integrity 
+A proxy that correctly honors client-to-server authentication integrity 
 will supply the "Proxy-support: Session-Based- Authentication" HTTP 
 header to the client in HTTP responses from the proxy. 
 

@@ -3,7 +3,7 @@ title: Multilegged Authentication for HTTP Multiplexing
 abbrev: HTTP Multilegged Auth
 docname: draft-montenegro-httpauth-multilegged-auth-latest
 date: {DATE}
-category: std
+category: info
 
 ipr: trust200902
 area: Security

@@ -194,7 +194,7 @@ to implement multilegged authentication for multiplexing:
       |                                      |
       | <------- (4) HTTP 200 OK-----------  |
       |              WWW-Authenticate header |
-      |              (Persisted-Auth header) |
+      |              (Persistent-Auth header) |
       |                                      |
       |                                      |
       v                                      v
@@ -223,7 +223,7 @@ to implement multilegged authentication for multiplexing:
 
    5.  Authentication succeeds and the server returns the requested
        resource.  If the exchange authenticated the connection, the server
-       SHOULD include a `Persisted-Auth` header (see {{header-persisted-auth}}).
+       SHOULD include a `Persistent-Auth` header (see {{header-Persistent-auth}}).
        
 ## Request Management
 
@@ -291,29 +291,29 @@ incomplete security contexts and discard inactive contexts.  If a request
 contains an unknown or expired Auth-ID, the request should be treated
 as containing no Auth-ID.
 
-## The Persisted-Auth Response Header {#header-persisted-auth}
+## The Persistent-Auth Response Header {#header-Persistent-auth}
 
 Some multilegged authentication schemes can result in per-request or 
 per-connection (i.e., Kerberos or Negotiate) authentication. When a 
-session is authenticated, servers SHOULD generate a `Persisted-Auth` 
+session is authenticated, servers SHOULD generate a `Persistent-Auth` 
 header and send it along with the HTTP 200 OK response.
 
-The `Persisted-Auth` header is defined as follows:
+The `Persistent-Auth` header is defined as follows:
 
-    Persisted-Auth = "true" / "false"
+    Persistent-Auth = "true" / "false"
 
-A `Persisted-Auth` header with an unknown value, or the absence of a 
-`Persisted-Auth` header, MUST be treated as the value "false". The 
-client MUST use the `Persisted-Auth` header to determine what action to 
+A `Persistent-Auth` header with an unknown value, or the absence of a 
+`Persistent-Auth` header, MUST be treated as the value "false". The 
+client MUST use the `Persistent-Auth` header to determine what action to 
 take with queued or subsequent requests: 
 
 1.  If the session was authenticated, as indicated by the
-    presence of the `Persisted-Auth` header with the value "true",
+    presence of the `Persistent-Auth` header with the value "true",
     the client does not need to authenticate new streams it creates
     to service future requests on the authenticated session.
 
 2.  If the session was not authenticated, as indicated by the
-    absence of the `Persisted-Auth` header or the value "false",
+    absence of the `Persistent-Auth` header or the value "false",
     the client SHOULD remember the negotiated authentication scheme
     used for authentication.  The client SHOULD NOT block streams on the
     session when processing requests using the multilegged
@@ -322,11 +322,11 @@ take with queued or subsequent requests:
 
 Clients SHOULD assume that successful authentication with schemes that 
 only support connection-based authentication (e.g. NTLM) always results 
-in an authenticated session, even if the `Persisted-Auth` header is not 
+in an authenticated session, even if the `Persistent-Auth` header is not 
 present. 
 
 The client CANNOT make any assumptions by the absence of the 
-`Persisted-Auth` header until the authentication process is complete and 
+`Persistent-Auth` header until the authentication process is complete and 
 it receives the final server response containing the requested resource. 
 
 
@@ -383,7 +383,7 @@ do not include an `Auth-ID` header MAY be relayed over any connection.
 
 The proxy MUST bind the HTTP/2 connections it maintains with the client 
 and server, using a separate connection to the server for each client. 
-The proxy MUST relay the `Auth-ID` and `Persisted-Auth` headers unmodified 
+The proxy MUST relay the `Auth-ID` and `Persistent-Auth` headers unmodified 
 between these connections.
 
 
@@ -441,7 +441,7 @@ This document defines the following HTTP header fields in the
    | Header Field Name | Protocol | Status      | Reference           |
    +-------------------|----------|-------------|---------------------+
    | Auth-ID           | http     | provisional | {{header-auth-id}}  |
-   | Persisted-Auth    | http     | provisional | {{header-persisted-auth}}
+   | Persistent-Auth   | http     | provisional | {{header-Persistent-auth}}
    +-------------------|----------|-------------|---------------------+
 
 The change controllers are the authors of this document.

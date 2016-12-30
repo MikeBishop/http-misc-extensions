@@ -10,6 +10,9 @@ This is the working area for assorted Individual internet-drafts relating to HTT
 * [Editor's copy](https://mikebishop.github.io/http-misc-extensions/draft-bishop-httpbis-extended-settings.html)
 * [Individual Draft] (https://tools.ietf.org/html/draft-bishop-httpbis-extended-settings)
 
+## Multi-legged auth in HTTP/2
+* [Editor's copy](https://mikebishop.github.io/http-misc-extensions/draft-montenegro-httpauth-multilegged-auth.html)
+* [Individual Draft] (https://tools.ietf.org/html/draft-montenegro-httpbis-multilegged-auth)
 
 ## Building the Draft
 

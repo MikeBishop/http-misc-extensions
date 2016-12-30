@@ -174,27 +174,27 @@ to implement multilegged authentication for multiplexing:
                                        Multiplexing
    Client                               HTTP Server
       |                                      |
-      | --------   HTTP GET Request ------>  |
+      | -------- (0) HTTP GET Request ---->  |
       |                                      |
-      | <------- (0) HTTP 401 -------------  |
+      | <------- (1) HTTP 401 -------------  |
       |              WWW-Authenticate header |
       |              (Auth-ID header)        |
       |                                      |
-      | -------- (1) HTTP Get Request ---->  |
+      | -------- (2) HTTP Get Request ---->  |
       |              Authorization header    |
       |              (Auth-ID header)        |
       |                                      |
-      | <------- (2) HTTP 401 -------------  |
+      | <------- (3) HTTP 401 -------------  |
       |              WWW-Authenticate header |
       |              Auth-ID header          |
       |                                      |
-      | -------- (3) HTTP Get Request ---->  |
+      | -------- (4) HTTP Get Request ---->  |
       |              Authorization header    |
       |              Auth-ID header          |
       |                                      |
-      | <------- (4) HTTP 200 OK-----------  |
+      | <------- (5) HTTP 200 OK-----------  |
       |              WWW-Authenticate header |
-      |              (Persistent-Auth header) |
+      |              (Persistent-Auth header)|
       |                                      |
       |                                      |
       v                                      v

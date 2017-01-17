@@ -39,15 +39,15 @@ informative:
 
 --- abstract
 
-HTTP/2 defines the SETTINGS frame to contain a single 32-bit value per 
-setting. While this is sufficient to convey everything used in the core 
-HTTP/2 specification, some protocols will require more complex values, 
-such as arrays of code-points or strings. 
+HTTP/2 defines the SETTINGS frame to contain a single 32-bit value per
+setting. While this is sufficient to convey everything used in the core
+HTTP/2 specification, some protocols will require more complex values,
+such as arrays of code-points or strings.
 
-For such protocols, this extension defines a parallel to the SETTINGS 
-frame, EXTENDED_SETTINGS, where the value of a setting is not a 32-bit 
-value, but a variable-length opaque data blob whose interpretation is 
-subject entirely to the definition of the protocol using it. 
+For such protocols, this extension defines a parallel to the SETTINGS
+frame, EXTENDED_SETTINGS, where the value of a setting is not a 32-bit
+value, but a variable-length opaque data blob whose interpretation is
+subject entirely to the definition of the protocol using it.
 
 --- middle
 
@@ -70,22 +70,22 @@ value -- two bits are defined, all others are reserved (and not useful).
 The setting fits easily in a single byte, and need not consume a four-byte
 value every time it is transferred.
 
-Alternately, a number of recent and in-progress HTTP/2 extensions 
-describe properties of the connection that are informative to the peer 
-([RFC7838], [I-D.ietf-httpbis-origin-frame]). These are essentially 
-settings that did not fit into a 32-bit value. 
+Alternately, a number of recent and in-progress HTTP/2 extensions
+describe properties of the connection that are informative to the peer
+([RFC7838], [I-D.ietf-httpbis-origin-frame]). These are essentially
+settings that did not fit into a 32-bit value.
 
-Each extension could define its own SETTINGS-equivalent frame to carry 
-its own data, as these extensions already have, but to do so every time 
-a new extension might require such a capability seems similarly 
+Each extension could define its own SETTINGS-equivalent frame to carry
+its own data, as these extensions already have, but to do so every time
+a new extension might require such a capability seems similarly
 wasteful, given the limited frame type space (also an IANA registry).
 
 # Detection of Support {#setting}
 
-An HTTP/2 peer that supports the EXTENDED_SETTINGS frame indicate this using the HTTP/2 `SETTINGS_EXTENDED_SETTINGS` 
-(0xSETTING-TBD) setting. 
+An HTTP/2 peer that supports the EXTENDED_SETTINGS frame indicate this using the HTTP/2 `SETTINGS_EXTENDED_SETTINGS`
+(0xSETTING-TBD) setting.
 
-The initial value for the `SETTINGS_EXTENDED_SETTINGS` setting is 0 (0x00), 
+The initial value for the `SETTINGS_EXTENDED_SETTINGS` setting is 0 (0x00),
 indicating that the peer does not support the EXTENDED_SETTINGS frame.
 A peer that is able to parse the EXTENDED_SETTINGS frame MUST set this value
 to 1 (0x01).
@@ -98,10 +98,10 @@ MAY be sent regardless of whether the peer has sent this setting.
 
 ## EXTENDED_SETTINGS Frame  {#settings-frame}
 
-The EXTENDED_SETTINGS frame (type=0xTBD1) conveys configuration parameters that 
-affect how endpoints communicate, such as preferences and constraints on peer 
-behavior which occur in a form other than a 32-bit value. Individually, an 
-EXTENDED_SETTINGS parameter can also be referred to as a "setting". 
+The EXTENDED_SETTINGS frame (type=0xTBD1) conveys configuration parameters that
+affect how endpoints communicate, such as preferences and constraints on peer
+behavior which occur in a form other than a 32-bit value. Individually, an
+EXTENDED_SETTINGS parameter can also be referred to as a "setting".
 
 EXTENDED_SETTINGS parameters are not negotiated; they describe characteristics
 of the sending peer, which are used by the receiving peer.  However, a negotiation
@@ -129,16 +129,16 @@ EXTENDED_SETTINGS parameters can request acknowledgement by the receiving peer. 
 enable this, the EXTENDED_SETTINGS frame defines the following flag:
 
 REQUEST_ACK (0x1):
-: When set, bit 0 indicates that this frame contains values which the 
+: When set, bit 0 indicates that this frame contains values which the
 sender wants to know were understood and applied. For more information,
 see {{synchronization}}.
 
-Like SETTINGS frames, EXTENDED_SETTINGS frames always apply to a 
-connection, never a single stream. The stream identifier for an 
-EXTENDED_SETTINGS frame MUST be zero (0x0). If an endpoint receives an 
-EXTENDED_SETTINGS frame whose stream identifier field is anything other 
-than 0x0, the endpoint MUST respond with a connection error (Section 
-5.4.1) of type PROTOCOL_ERROR. 
+Like SETTINGS frames, EXTENDED_SETTINGS frames always apply to a
+connection, never a single stream. The stream identifier for an
+EXTENDED_SETTINGS frame MUST be zero (0x0). If an endpoint receives an
+EXTENDED_SETTINGS frame whose stream identifier field is anything other
+than 0x0, the endpoint MUST respond with a connection error (Section
+5.4.1) of type PROTOCOL_ERROR.
 
 The EXTENDED_SETTINGS frame affects connection state.  A badly formed or
 incomplete EXTENDED_SETTINGS frame MUST be treated as a connection error
@@ -146,7 +146,7 @@ incomplete EXTENDED_SETTINGS frame MUST be treated as a connection error
 
 ### EXTENDED_SETTINGS Format
 
-The payload of a SETTINGS frame consists of zero or more parameters, 
+The payload of a SETTINGS frame consists of zero or more parameters,
 each consisting of an unsigned 16-bit setting identifier and a
 length-prefixed binary value.
 
@@ -182,29 +182,29 @@ of type `FRAME_SIZE_ERROR`.
 
 # Settings Synchronization {#synchronization}
 
-Some values in EXTENDED_SETTINGS benefit from or require an 
-understanding of when the peer has received and applied the changed 
-parameter values. In order to provide such synchronization timepoints, 
-the recipient of a EXTENDED_SETTINGS frame MUST apply the updated 
-parameters as soon as possible upon receipt. The values in the 
-EXTENDED_SETTINGS frame MUST be processed in the order they appear, with 
-no other frame processing between values. Unsupported parameters MUST be 
+Some values in EXTENDED_SETTINGS benefit from or require an
+understanding of when the peer has received and applied the changed
+parameter values. In order to provide such synchronization timepoints,
+the recipient of a EXTENDED_SETTINGS frame MUST apply the updated
+parameters as soon as possible upon receipt. The values in the
+EXTENDED_SETTINGS frame MUST be processed in the order they appear, with
+no other frame processing between values. Unsupported parameters MUST be
 ignored.
 
-Once all values have been processed, if the REQUEST_ACK flag was set, 
-the recipient MUST immediately emit a EXTENDED_SETTINGS_ACK frame 
-listing the identifiers whose values were understood and applied. (If 
-none of the values were understood, the EXTENDED_SETTINGS_ACK frame will 
-be empty, but MUST still be sent.) Upon receiving an 
-EXTENDED_SETTINGS_ACK frame, the sender of the altered parameters can 
-rely on the setting having been applied. 
+Once all values have been processed, if the REQUEST_ACK flag was set,
+the recipient MUST immediately emit a EXTENDED_SETTINGS_ACK frame
+listing the identifiers whose values were understood and applied. (If
+none of the values were understood, the EXTENDED_SETTINGS_ACK frame will
+be empty, but MUST still be sent.) Upon receiving an
+EXTENDED_SETTINGS_ACK frame, the sender of the altered parameters can
+rely on the setting having been applied.
 
-If the sender of an EXTENDED_SETTINGS frame with the `REQUEST_ACK` flag 
-set does not receive an acknowledgement from a peer that has sent the 
-`SETTINGS_EXTENDED_SETTINGS` setting within a reasonable amount of time, 
-it MAY issue a connection error ([RFC7540] Section 5.4.1) of type 
-SETTINGS_TIMEOUT. This error MUST NOT be sent if the peer has not 
-previously advertised support for EXTENDED_SETTINGS. 
+If the sender of an EXTENDED_SETTINGS frame with the `REQUEST_ACK` flag
+set does not receive an acknowledgement from a peer that has sent the
+`SETTINGS_EXTENDED_SETTINGS` setting within a reasonable amount of time,
+it MAY issue a connection error ([RFC7540] Section 5.4.1) of type
+SETTINGS_TIMEOUT. This error MUST NOT be sent if the peer has not
+previously advertised support for EXTENDED_SETTINGS.
 
 # Security Considerations {#security}
 
@@ -263,9 +263,9 @@ Specification:
 
 ## New HTTP/2 Frames {#iana-frame}
 
-Two new frame types are registered in the "HTTP/2 Frame Types" registry 
-established in [RFC7540]. The entries in the following table are 
-registered by this document. 
+Two new frame types are registered in the "HTTP/2 Frame Types" registry
+established in [RFC7540]. The entries in the following table are
+registered by this document.
 
 ~~~~~~~~~~~~
 +-----------------------+--------------+-------------------------+

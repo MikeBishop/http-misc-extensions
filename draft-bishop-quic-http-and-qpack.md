@@ -290,6 +290,20 @@ deleted. At this point, the space can be recovered by the encoder and the
 encoder can safely reuse the index for future insertions.
 
 
+# Use in HTTP/QUIC
+
+HTTP/QUIC [I-D.ietf-quic-http] currently retains the HPACK compressor from
+HTTP/2. Using QPACK instead would entail the following changes:
+
+- The Sequence field is removed from HEADERS frames (Section 5.2.2) and
+  PUSH_PROMISE frames (Section 5.2.6).
+- Header Block Fragments consist of QPACK data instead of HPACK data.
+- The ordering requirements of header block fragments are eliminated.
+
+A HEADERS or PUSH_PROMISE frame MAY contain an arbitrary number of QPACK
+instructions, but QPACK instructions SHOULD NOT cross a boundary between
+successive HEADERS frames.
+
 # Performance Considerations
 
 While QPACK is designed to minimize head-of-line blocking between streams on

@@ -292,8 +292,9 @@ encoder can safely reuse the index for future insertions.
 
 # Use in HTTP/QUIC
 
-HTTP/QUIC [I-D.ietf-quic-http] currently retains the HPACK compressor from
-HTTP/2. Using QPACK instead would entail the following changes:
+HTTP/QUIC [I-D.ietf-quic-http] currently retains the HPACK encoder/decoder from
+HTTP/2, using a Sequence number to enforce ordering. Using QPACK instead would
+entail the following changes:
 
 - The Sequence field is removed from HEADERS frames (Section 5.2.2) and
   PUSH_PROMISE frames (Section 5.2.6).

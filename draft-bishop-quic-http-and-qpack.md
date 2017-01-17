@@ -166,12 +166,12 @@ reduced value only applies on each stream after receiving an appropriate
 SETTINGS_ACK. The new value, in either direction, is applicable to the encoder
 immediately upon sending the SETTINGS_ACK frames.
 
-Upon a reduced maximum value being applied, the dynamic table MAY be larger than
-the new maximum. This MUST NOT be considered an error, but any attempt to insert
-a new value into the dynamic table that takes it above the currently-applicable
-limit MUST be considered a fatal error. Before making any further insertions to
-the dynamic table, the encoder MUST delete enough entries to perform the
-insertion without violating the table maximum.
+Upon a reduced maximum value being applied, the dynamic table might be larger
+than the new maximum. This MUST NOT be considered an error, but any attempt to
+insert a new value into the dynamic table that takes it above the
+currently-applicable limit MUST be considered a fatal error. Before making any
+further insertions to the dynamic table, the encoder MUST delete enough entries
+to perform the insertion without violating the table maximum.
 
 If an encoder opts to use a smaller maximum table size than the decoder has
 specified, it does not need to inform the decoder of this as in HPACK. The

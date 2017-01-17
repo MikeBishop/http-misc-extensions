@@ -320,7 +320,9 @@ The security considerations for QPACK are believed to be the same as for HPACK.
 
 # IANA Considerations
 
-This document currently makes no request of IANA, but probably should.
+This document currently makes no request of IANA, but probably should. In
+particular, the QPACK-ACK frame needs to be registered and have a frame type
+number assigned.
 
 # Acknowledgements {#ack}
 

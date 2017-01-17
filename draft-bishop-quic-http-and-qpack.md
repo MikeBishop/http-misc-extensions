@@ -302,7 +302,9 @@ HTTP/2. Using QPACK instead would entail the following changes:
 
 A HEADERS or PUSH_PROMISE frame MAY contain an arbitrary number of QPACK
 instructions, but QPACK instructions SHOULD NOT cross a boundary between
-successive HEADERS frames.
+successive HEADERS frames.  A partial HEADERS or PUSH_PROMISE frame MAY be
+processed upon arrival and the resulting partial header set emitted or buffered
+according to implementation requirements.
 
 # Performance Considerations
 
@@ -327,6 +329,11 @@ Note that this situation can arise as well from reducing the maximum table size
 abruptly -- the encoder will find itself unable to add new entries for at least
 one RTT.
 
+Decoders MAY choose whether to process partial header blocks upon arrival.
+Failure to process partial header blocks could introduce head-of-line blocking
+on other streams which depend on the definitions in the blocks, but processing
+them means buffering the resulting output, which is presumably larger than the
+encoded form.
 
 # Security Considerations
 

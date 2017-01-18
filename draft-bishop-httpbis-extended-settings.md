@@ -2,7 +2,7 @@
 title: HTTP/2 Extended SETTINGS Extension
 abbrev: EXTENDED_SETTINGS
 docname: draft-bishop-httpbis-extended-settings-latest
-date: 2016
+date: {DATE}
 category: info
 
 ipr: trust200902

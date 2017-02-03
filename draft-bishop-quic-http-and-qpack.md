@@ -318,8 +318,8 @@ Delta1..N:
 
 In order to safely delete an entry, a decoder MUST ensure that all outstanding
 references have arrived and been processed.  Because no data is available about
-stream IDs less than the Horizon, a decoder MUST assume that any earlier stream ID
-might have contained a reference to the value in question.
+stream IDs less than the Horizon, a decoder MUST assume that any earlier stream
+ID might have contained a reference to the value in question.
 
 A decoder can ensure all outstanding references have been processed by verifying
 that the following statements are true:
@@ -340,6 +340,12 @@ stream is expected to close immediately after receipt of the trailers block.
 If these conditions are not met upon receipt of a Delete instruction, a decoder
 MUST wait to emit a Delete-Ack instruction until the outstanding streams have
 reached an appropriate state.
+
+Note that a decoder MAY condense the list of specified streams by increasing the
+Horizon value and discarding those explicitly-listed stream IDs which are less
+than the new Horizon it has chosen.  This delays delete completion, but reduces
+the amount of state to be tracked by the decoder without changing the
+correctness of the requirements above.
 
 ### Delete-Ack {#delete-ack}
 
@@ -487,7 +493,16 @@ space.
 
 # Security Considerations
 
-The security considerations for QPACK are believed to be the same as for HPACK.
+A malicious encoder might attempt to consume a large amount of space on the
+decoder by opening the maximum number of streams, adding entries to the table,
+then  sending delete instructions enumerating many streams in a Stream ID List.
+
+To guard against such attacks, a decoder SHOULD bound its state tracking by
+generalizing the list of streams to be tracked.  This is most easily achieved by
+advancing the Horizon to a later value and discarding explicit Stream IDs to
+track, but can also be accomplished by eliding explicit streams in ranges.  This
+does not cause any loss of consistency for deletes, but could delay completion
+and reduce performance if done aggressively.
 
 # IANA Considerations
 

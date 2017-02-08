@@ -5,14 +5,17 @@ This is the working area for assorted Individual internet-drafts relating to HTT
 ## QPACK and HTTP/QUIC
 * [Editor's copy](https://mikebishop.github.io/http-misc-extensions/draft-bishop-quic-http-and-qpack.html)
 * [Individual Draft] (https://tools.ietf.org/html/draft-bishop-quic-http-and-qpack)
+* [Compare Working Group Draft and Editor's copy] (https://tools.ietf.org/rfcdiff?url1=https://tools.ietf.org/id/draft-bishop-quic-http-and-qpack&url2=https://mikebishop.github.io/http-misc-extensions/draft-bishop-quic-http-and-qpack.txt)
 
 ## HTTP/2 EXTENDED_SETTINGS
 * [Editor's copy](https://mikebishop.github.io/http-misc-extensions/draft-bishop-httpbis-extended-settings.html)
 * [Individual Draft] (https://tools.ietf.org/html/draft-bishop-httpbis-extended-settings)
+* [Compare Working Group Draft and Editor's copy] (https://tools.ietf.org/rfcdiff?url1=https://tools.ietf.org/id/draft-bishop-httpbis-extended-settings&url2=https://mikebishop.github.io/http-misc-extensions/draft-bishop-httpbis-extended-settings.txt)
 
 ## Multi-legged auth in HTTP/2
 * [Editor's copy](https://mikebishop.github.io/http-misc-extensions/draft-montenegro-httpauth-multilegged-auth.html)
 * [Individual Draft] (https://tools.ietf.org/html/draft-montenegro-httpbis-multilegged-auth)
+* [Compare Working Group Draft and Editor's copy] (https://tools.ietf.org/rfcdiff?url1=https://tools.ietf.org/id/draft-montenegro-httpbis-multilegged-auth&url2=https://mikebishop.github.io/http-misc-extensions/draft-montenegro-httpauth-multilegged-auth.txt)
 
 ## Building the Draft
 

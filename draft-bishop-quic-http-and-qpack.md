@@ -400,14 +400,14 @@ found in an indexed header field representation.
 A literal header field representation starts with the '0' 1-bit pattern and
 causes a header field to be added the decoded header list.
 
-The second bit, 'N', indicates whether an intermediary may add this header to
-the dynamic header table on subsequent hops. When the 'N' bit is set, the
-encoded header MUST always be encoded with this specific literal representation.
-In particular, when a peer sends a header field that it received represented as
-a literal header field never indexed, it MUST use the same representation to
-forward this header field.  This bit is intended for protecting header field
-values that are not to be put at risk by compressing them (see Section 7.1 of
-[RFC7541] for more details).
+The second bit, 'N', indicates whether an intermediary is permitted to add this
+header to the dynamic header table on subsequent hops. When the 'N' bit is set,
+the encoded header MUST always be encoded with this specific literal
+representation. In particular, when a peer sends a header field that it received
+represented as a literal header field with the 'N' bit set, it MUST use the same
+representation to forward this header field.  This bit is intended for
+protecting header field values that are not to be put at risk by compressing
+them (see Section 7.1 of [RFC7541] for more details).
 
 If the header field name matches the header field name of an entry stored in the
 static table or the dynamic table, the header field name can be represented

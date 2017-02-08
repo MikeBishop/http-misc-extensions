@@ -21,8 +21,6 @@ author:
     email: michael.bishop@microsoft.com
 
 normative:
-  RFC7230:
-  RFC7231:
   RFC7540:
   RFC2119:
   RFC7541:
@@ -82,8 +80,8 @@ common header syntax) are currently included, but certainly could be.
 ## Terminology          {#Terminology}
 In this document, the key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL
 NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" are to be
-interpreted as described in BCP 14, RFC 2119 {{RFC2119}} and indicate
-requirement levels for compliant STuPiD implementations.
+interpreted as described in BCP 14, [RFC2119] and indicate requirement levels
+for compliant implementations.
 
 # QPACK {#QPACK}
 
@@ -194,7 +192,7 @@ This value is always greater than the number of entries in the static table.
 If the header field name matches the header field name of an entry stored in the
 static table or the dynamic table, the header field name can be represented
 using the index of that entry. In this case, the index of the entry is
-represented as an integer with an 8-bit prefix (see Section 5.1 of [RFC7231]).
+represented as an integer with an 8-bit prefix (see Section 5.1 of [RFC7541]).
 This value is always non-zero.
 
 ~~~~~~~~~~
@@ -212,7 +210,7 @@ This value is always non-zero.
 {: title="Insert Header Field -- Indexed Name"}
 
 Otherwise, the header field name is represented as a string literal (see Section
-5.2 of [RFC7231]). A value 0 is used in place of the 8-bit index, followed by
+5.2 of [RFC7541]). A value 0 is used in place of the 8-bit index, followed by
 the header field name.
 
 ~~~~~~~~~~
@@ -277,7 +275,7 @@ discarded and large regions where many or all streams contain references.
 Following the horizon, a sequence of deltas indicates all streams since the
 Horizon on which a value has been used.
 
-In the extreme case, a Stream ID List might be a horizon value followed by one
+In the simplest case, a Stream ID List might be a horizon value followed by one
 zero byte.  This indicates an absolute cut-off after which the entry is
 guaranteed not to be referenced.
 
@@ -412,7 +410,7 @@ them (see Section 7.1 of [RFC7541] for more details).
 If the header field name matches the header field name of an entry stored in the
 static table or the dynamic table, the header field name can be represented
 using the index of that entry. In this case, the index of the entry is
-represented as an integer with a 6-bit prefix (see Section 5.1 of [RFC7231]).
+represented as an integer with a 6-bit prefix (see Section 5.1 of [RFC7541]).
 This value is always non-zero.
 
 ~~~~~~~~~~
@@ -428,7 +426,7 @@ This value is always non-zero.
 {: title="Literal Header Field -- Indexed Name"}
 
 Otherwise, the header field name is represented as a string literal (see Section
-5.2 of [RFC7231]). A value 0 is used in place of the 6-bit index, followed by
+5.2 of [RFC7541]). A value 0 is used in place of the 6-bit index, followed by
 the header field name.
 
 ~~~~~~~~~~

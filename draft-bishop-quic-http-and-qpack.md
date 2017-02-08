@@ -125,6 +125,26 @@ a decoding error. However, if the implementation chooses not to abort the
 connection, the remainder of the header block MUST be decoded and the output
 discarded.
 
+### Changes to Header Table Size
+
+HTTP/QUIC prohibits mid-stream changes of settings.  As a result, only one table
+size change is possible:  From the value a client assumes during the 0-RTT
+flight to the actual value included in the server's SETTINGS frame.  The assumed
+value is required to be either a server's previous value or zero.  A server
+whose configuration has recently changed MAY overlook inadvertent violations of
+its maximum table size during the first round-trip.
+
+In the case that the value has increased, either from zero to a non-zero value
+or from the cached value to a higher value, no action is required by the client.
+The encoder can simply begin using the additional space.  In the case that the
+value has decreased, the encoder MUST immediately emit delete instructions
+which, upon completion, would bring the table within the required size.
+
+Regardless of changes to header table size, the encoder MUST NOT add entries to
+the table which would result in a size greater than the maximum permitted.  This
+can imply that no additions are permitted while waiting for these delete
+instructions to complete.
+
 ### Dynamic Table State Synchronization
 
 In order to ensure table consistency, all modifications of the header table

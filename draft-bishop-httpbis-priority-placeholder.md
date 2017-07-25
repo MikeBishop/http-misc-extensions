@@ -173,8 +173,8 @@ the priority tree, because placeholders will be used to "root" any persistent
 structure of the tree which the client cares about retaining.  For
 prioritization purposes, a node in the tree is considered "inactive" when the
 corresponding stream has been closed for at least two round-trip times (using
-any reasonable estimate available on the server).  This helps mitigate race
-conditions where the server has pruned a node the client believed was still
+any reasonable estimate available on the server).  This delay helps mitigate
+race conditions where the server has pruned a node the client believed was still
 active and used as a Stream Dependency.
 
 Specifically, the server MAY at any time:
@@ -216,6 +216,37 @@ helps to constrain a previously unbounded state commitment.
 
 # IANA Considerations {#iana}
 
-TBD.
+This document registers one new frame type and one new setting.
+
+## SETTINGS_PLACEHOLDERS Setting
+
+The `SETTINGS_PLACEHOLDERS` setting is registered in the "HTTP/2 Settings"
+registry established in [RFC7540].
+
+Name:
+: SETTINGS_PLACEHOLDERS
+
+Code:
+: 0xSETTING-TBD
+
+Initial Value:
+: not set
+
+Specification:
+: This document.
+
+## PLACEHOLDER_PRIORITY Frame
+
+The `PLACEHOLDER_PRIORITY` frame is registered in the "HTTP/2 Frames" registry
+established in [RFC7540].
+
+Name:
+: PLACEHOLDER_PRIORITY
+
+Code:
+: 0xFRAME-TBD
+
+Specification:
+: This document.
 
 --- back

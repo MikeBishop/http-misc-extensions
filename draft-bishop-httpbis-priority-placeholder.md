@@ -1,7 +1,7 @@
 ---
 title: Priority Placeholders in HTTP/2
 abbrev: Placeholders in HTTP/2
-docname: draft-bishop-httpbis-priority-placeholders-latest
+docname: draft-bishop-httpbis-priority-placeholder-latest
 date: {DATE}
 category: std
 

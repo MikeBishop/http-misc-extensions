@@ -64,19 +64,155 @@ defined in {{!RFC2119}}.
 
 # The Priority Placeholder Extension
 
-This extension consists of an additional setting {{setting}}, new flags on the
-PRIORITY frame {{frame}}, and modified state management logic on the server
+This extension consists of an additional setting {{setting}}, changes to the set
+of HTTP/2 frames {{frames}}, and modified state management logic on the server
 {{logic}}.
 
 ## Priority Placeholder Setting {#setting}
 
-## PRIORITY Frame Modifications {#frame}
+An HTTP/2 peer that supports Priority Placeholders indicates this using the
+HTTP/2 `SETTINGS_PLACEHOLDERS` (0xSETTING-TBD) setting.
+
+When a value for the `SETTINGS_PLACEHOLDERS` setting is not set, this indicates
+that the peer does not support the extension, and other protocol elements in
+this document MUST NOT be used.  A client that supports this extension SHOULD
+set this value to 0 (0x00).
+
+A server which supports this extension MUST set this value to a non-zero number
+indicating the number of placeholders it is willing to make available to the
+client, which MUST be at most 2^31-1.  Clients MUST NOT use the protocol
+elements in this document unless the server has indicated support by setting a
+non-zero value.
+
+### Mid-session updates
+
+HTTP/2 permits settings to change during the course of a connection.  This
+setting can be freely increased at any time without consequence, and servers
+SHOULD NOT reduce the value during the lifetime of a connection.
+
+If a client receives a reduction in the number of permitted placeholders, it
+MUST assume that all placeholders over the new limit have been pruned from the
+tree and SHOULD immediately issue PRIORITY and PLACEHOLDER_PRIORITY frames as
+necessary to rebuild the priority tree as desired.
+
+## Frame Modifications {#frames}
+
+### Existing Frame Types
+
+When client and server have opted in to this extension, the HTTP/2 PRIORITY
+frame and HEADERS frame contain one additional flag:
+
+DEPENDENT_ON_PLACEHOLDER (0x2):
+: When set, bit 1 indicates that the value in the Stream Dependency field is a
+  Placeholder ID rather than a Stream ID.
+
+In HEADERS, this flag MUST NOT be set if the PRIORITY flag is not set.
+
+### PLACEHOLDER_PRIORITY Frame
+
+The PLACEHOLDER_PRIORITY (type=0xFRAME-TBD) frame specifies the sender-advised
+priority of a placeholder. It MUST be sent only on Stream 0.  The semantics of
+the Stream Dependency, Weight, and E flag are the same as in the HTTP/2 PRIORITY
+frame.
+
+The flags defined are:
+
+  E (0x01):
+  : Indicates that the stream dependency is exclusive (see {{!RFC7540}}, Section
+    5.3).
+
+  DEPENDENT_ON_PLACEHOLDER (0x2):
+  : When set, bit 1 indicates that the value in the Stream Dependency field is a
+    Placeholder ID rather than a Stream ID.
+
+
+~~~~~~~~~~  drawing
+    0                   1                   2                   3
+    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |0|                    Placeholder ID (31)                      |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |0|                  Stream Dependency (31)                     |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |   Weight (8)  |
+   +-+-+-+-+-+-+-+-+
+~~~~~~~~~~
+{: #fig-priority title="PRIORITY frame payload"}
+
+The PLACEHOLDER_PRIORITY frame payload has the following fields:
+
+  Prioritized Stream:
+  : A 31-bit stream identifier for the request stream whose priority is being
+    updated.
+
+  Stream Dependency:
+  : A 31-bit stream or placeholder identifier for the request stream that this
+    stream depends on (see {{!RFC7540}}, Section 5.3).
+
+  Weight:
+  : An unsigned 8-bit integer representing a priority weight for the stream (see
+    {{!RFC7540}}, Section 5.3). Add one to the value to obtain a weight between
+    1 and 256.
+
+A PLACEHOLDER_PRIORITY frame MUST have a payload length of nine octets.  A
+PLACEHOLDER_PRIORITY frame of any other length MUST be treated as a connection
+error of type PROTOCOL_ERROR if the sender has advertised support for this
+extension, and ignored otherwise.
+
 
 ## Priority Management Logic {#logic}
 
+This extension provides a mechanism for servers to limit how many
+additional IDs which do not refer to an active request will be used to maintain
+priority state.  Because the server commits to maintain these inactive IDs,
+clients can use them with confidence that the server will not have discarded
+the state without warning.
+
+In exchange, the server knows it can aggressively prune inactive regions from
+the priority tree, because placeholders will be used to "root" any persistent
+structure of the tree which the client cares about retaining.  For
+prioritization purposes, a node in the tree is considered "inactive" when the
+corresponding stream has been closed for at least two round-trip times (using
+any reasonable estimate available on the server).  This helps mitigate race
+conditions where the server has pruned a node the client believed was still
+active and used as a Stream Dependency.
+
+Specifically, the server MAY at any time:
+
+  - Identify and discard branches of the tree containing only inactive nodes
+    (i.e. a node with only other inactive nodes as descendants, along with those
+    descendants)
+  - Identify and condense interior regions of the tree containing only inactive
+    nodes, allocating weight appropriately
+
+~~~~~~~~~~  drawing
+    x                x                 x
+    |                |                 |
+    P                P                 P
+   / \               |                 |
+  C   C     ==>      C      ==>        A
+     / \             |                 |
+    A   C            A                 A
+    |                |
+    A                A
+~~~~~~~~~~
+{: #fig-pruning title="Example of Priority Tree Pruning"}
+
+Note that these transformations result in no change in the resources allocated
+to a particular active stream.
+
+In the example in {{fig-pruning}}, `P` represents a Placeholder, `A` represents
+an active stream, and `C` represents a closed stream.  In the first step, the
+server discards two inactive branches (each a single node).  In the second
+step, the server condenses an interior inactive node.
+
+Clients MUST assume the server is actively performing such pruning and MUST NOT
+declare a dependency on a stream it knows to have been closed.
+
 # Security Considerations {#security}
 
-TBD.
+This extension is believed to improve security relative to [RFC7540], as it
+helps to constrain a previously unbounded state commitment.
 
 # IANA Considerations {#iana}
 

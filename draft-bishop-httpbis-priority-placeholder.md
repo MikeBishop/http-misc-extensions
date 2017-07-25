@@ -93,7 +93,9 @@ SHOULD NOT reduce the value during the lifetime of a connection.
 If a client receives a reduction in the number of permitted placeholders, it
 MUST assume that all placeholders over the new limit have been pruned from the
 tree and SHOULD immediately issue PRIORITY and PLACEHOLDER_PRIORITY frames as
-necessary to rebuild the priority tree as desired.
+necessary to rebuild the priority tree as desired.  Once the SETTINGS frame has
+been acknowledged, servers should treat the excess placeholders as inactive and
+prune them following the same logic in {{logic}}.
 
 ## Frame Modifications {#frames}
 

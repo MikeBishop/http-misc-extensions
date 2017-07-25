@@ -190,21 +190,20 @@ Specifically, the server MAY at any time:
     |                |                 |
     P                P                 P
    / \               |                 |
-  C   C     ==>      C      ==>        A
+  I   I     ==>      I      ==>        A
      / \             |                 |
-    A   C            A                 A
+    A   I            A                 A
     |                |
     A                A
 ~~~~~~~~~~
 {: #fig-pruning title="Example of Priority Tree Pruning"}
 
-Note that these transformations result in no change in the resources allocated
-to a particular active stream.
-
 In the example in {{fig-pruning}}, `P` represents a Placeholder, `A` represents
-an active stream, and `C` represents a closed stream.  In the first step, the
-server discards two inactive branches (each a single node).  In the second
-step, the server condenses an interior inactive node.
+an active node, and `I` represents an inactive node.  In the first step, the
+server discards two inactive branches (each a single node).  In the second step,
+the server condenses an interior inactive node.  Note that these transformations
+will result in no change in the resources allocated to a particular active
+stream.
 
 Clients MUST assume the server is actively performing such pruning and MUST NOT
 declare a dependency on a stream it knows to have been closed.

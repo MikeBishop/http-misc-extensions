@@ -7,6 +7,11 @@ This is the working area for assorted Individual internet-drafts relating to HTT
 * [Individual Draft](https://tools.ietf.org/html/draft-bishop-quic-http-and-qpack)
 * [Compare Working Group Draft and Editor's copy](https://tools.ietf.org/rfcdiff?url1=https://tools.ietf.org/id/draft-bishop-quic-http-and-qpack&url2=https://mikebishop.github.io/http-misc-extensions/draft-bishop-quic-http-and-qpack.txt)
 
+## ALTSVC Frame for HTTP/QUIC
+* [Editor's copy](https://mikebishop.github.io/http-misc-extensions/draft-bishop-httpbis-altsvc-quic.html)
+* [Individual Draft](https://tools.ietf.org/html/draft-bishop-httpbis-altsvc-quic)
+* [Compare Working Group Draft and Editor's copy](https://tools.ietf.org/rfcdiff?url1=https://tools.ietf.org/id/draft-bishop-httpbis-altsvc-quic&url2=https://mikebishop.github.io/http-misc-extensions/draft-bishop-httpbis-altsvc-quic.txt)
+
 ## HTTP/2 EXTENDED_SETTINGS
 * [Editor's copy](https://mikebishop.github.io/http-misc-extensions/draft-bishop-httpbis-extended-settings.html)
 * [Individual Draft](https://tools.ietf.org/html/draft-bishop-httpbis-extended-settings)

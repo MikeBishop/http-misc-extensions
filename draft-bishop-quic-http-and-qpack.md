@@ -90,14 +90,16 @@ for compliant implementations.
 HPACK combines header table modification and message header emission in a single
 sequence of coded bytes.  QPACK bifurcates these into two channels:
 
-  - A connection-wide series of table update instructions sent on a dedicated
-    headers stream
+  - Connection-wide sets of table update instructions sent on non-request
+    streams
   - Non-modifying instructions which use the current header table state to
-    encode message headers
+    encode message headers on request streams
 
 Because the per-message instructions introduce no changes to the header table
 state, no state is lost if these instructions are discarded due to a stream
-reset.
+reset.  Because the updates to the header table supply their own order controls
+(the delete logic), they can be processed in any order and therefore delivered
+as messages using unidirectional QUIC streams.
 
 ## Changes to Static and Dynamic Tables
 
@@ -121,9 +123,7 @@ Because it is possible for QPACK frames to arrive which reference indices which
 have not yet been defined, such frames MUST wait until another frame has
 arrived and defined the index. In order to guard against malicious peers,
 implementations SHOULD impose a time limit and treat expiration of the timer as
-a decoding error. However, if the implementation chooses not to abort the
-connection, the remainder of the header block MUST be decoded and the output
-discarded.
+a decoding error.
 
 ### Changes to Header Table Size
 
@@ -148,8 +148,8 @@ instructions to complete.
 ### Dynamic Table State Synchronization
 
 In order to ensure table consistency, all modifications of the header table
-occur on a dedicated control stream.  Message control streams contain only
-indexed and literal header entries.
+occur as separate messages rather than on request streams.  Request streams
+contain only indexed and literal header entries.
 
 No entries are automatically evicted from the dynamic table. Size management is
 purely the responsibility of the encoder, which MUST NOT exceed the declared
@@ -165,7 +165,9 @@ table:
 
 "Recently-active" streams are those which are still open or were closed less
 than a reasonable number of RTTs ago.  An implementation MAY vary its definition
-of "recent" to trade off memory consumption and timely completion of deletes.
+of "recent" to trade off memory consumption and timely completion of deletes,
+and tracking no information is a functional (though potentially less performant)
+choice in this space.
 
 The encoder MUST consider memory as committed beginning when the indexed entry
 is assigned.
@@ -186,7 +188,7 @@ following set of states:
 
   3. **Delete acknowledged.**  The decoder has received all QPACK frames which
      reference the deleted value, and can safely delete the entry.  The decoder
-     SHOULD promptly emit a Delete-Ack instruction on the header management
+     SHOULD promptly emit a Delete-Ack instruction on a header management
      stream.
 
   4. **Delete completed.**  When the encoder receives a Delete-Ack instruction
@@ -194,14 +196,14 @@ following set of states:
      against the table size and MAY emit insert instructions for the field with
      a new value.
 
-## Format of Header Management stream
+## Header Management Streams
 
-The header management stream contains a series of QPACK instructions with no
-message boundaries.  Data on this stream SHOULD be processed as soon as it
-arrives.
+Header management streams are unidirectional streams in either direction which
+contain a series of QPACK instructions with no message boundaries.  Data on
+these streams SHOULD be processed as soon as it arrives.
 
-This section describes the instructions which are possible on the Header
-Management stream.
+This section describes the instructions which are possible on header management
+streams.
 
 ### Insert
 
@@ -276,7 +278,7 @@ contained references to the entry in question.
    |     Non-Trailer List (*)    ...
    +-------------------------------+
    |       Trailer List (*)      ...
-   +-------------------------------+                  
+   +-------------------------------+
 ~~~~~~~~~~
 {: title="Delete Instruction"}
 
@@ -295,9 +297,14 @@ discarded and large regions where many or all streams contain references.
 Following the horizon, a sequence of deltas indicates all streams since the
 Horizon on which a value has been used.
 
-In the simplest case, a Stream ID List might be a horizon value followed by one
-zero byte.  This indicates an absolute cut-off after which the entry is
-guaranteed not to be referenced.
+This structure permits either side to adjust the amount of tracking complexity
+it is willing to devote to ensure timely deletions.  In the simplest case, a
+Stream ID List might be a horizon value followed by one zero byte.  This
+indicates an absolute cut-off after which the entry is guaranteed not to be
+referenced, and requires the receiver to wait until all prior requests have been
+completed.  Similarly, the receiver can create equivalent-but-less-complex
+forms of a Stream ID list by increasing the Horizon value and discarding all
+explicit stream entries less than the new value.
 
 ~~~~~~~~~~
      0   1   2   3   4   5   6   7
@@ -313,7 +320,7 @@ guaranteed not to be referenced.
                   ...
    +-------------------------------+
    |         [DeltaN (8+)]         |
-   +-------------------------------+                  
+   +-------------------------------+
 ~~~~~~~~~~
 {: title="Stream ID List"}
 
@@ -477,8 +484,9 @@ entail the following changes:
 - The Sequence field is removed from HEADERS frames (Section 5.2.2) and
   PUSH_PROMISE frames (Section 5.2.6).
 - Header Block Fragments consist of QPACK data instead of HPACK data.
-- An additional control stream is reserved for header table updates. Alternately,
-  this could be carried by HEADERS frames on the connection control stream.
+- Just as unidirectional push streams have a stream header identifying their
+  type and Push ID, a header will need to be added to differentiate header table
+  update streams from requests and pushes.
 
 A HEADERS or PUSH_PROMISE frame MAY contain an arbitrary number of QPACK
 instructions, but QPACK instructions SHOULD NOT cross a boundary between
@@ -509,11 +517,16 @@ advance of encountering the table maximum. Decoders SHOULD be prompt about
 emitting Delete-Ack instructions to enable the encoder to recover the table
 space.
 
+The ability to split updates to the header table into discrete messages reduces
+the possibility for head-of-line blocking within the table update streams.
+Implementations SHOULD limit the size of table update messages to avoid
+head-of-line blocking within these messages.
+
 # Security Considerations
 
 A malicious encoder might attempt to consume a large amount of space on the
 decoder by opening the maximum number of streams, adding entries to the table,
-then  sending delete instructions enumerating many streams in a Stream ID List.
+then sending delete instructions enumerating many streams in a Stream ID List.
 
 To guard against such attacks, a decoder SHOULD bound its state tracking by
 generalizing the list of streams to be tracked.  This is most easily achieved by

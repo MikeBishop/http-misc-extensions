@@ -494,6 +494,51 @@ successive HEADERS frames.  A partial HEADERS or PUSH_PROMISE frame MAY be
 processed upon arrival and the resulting partial header set emitted or buffered
 according to implementation requirements.
 
+# Implementation trade-offs
+
+This document specifies a means for the encoder to express the choices it made
+while encoding, but intentionally does not mandate what those choices should be.
+In this section, potential areas for implementation tuning are explored.
+
+## Compression Efficiency versus Blocking Avoidance
+
+The most efficient compression algorithm will reference a table entry whenever
+it exists in the table, but risks blocking when subject to packet loss or
+reordering.  The most conservative algorithm will always emit literals to
+guarantee that no blocking will ever occur.  Most implementations will choose a
+balance between these two extremes.
+
+Better efficiency while being similarly conservative can be achieved by
+permitting references to table entries only once these entries are confirmed to
+be present in the table.  More optimization can be achieved when the reference
+is known to be in the same packet as the definition.
+
+Increases in efficiency can be achieved by assuming greater risk of blocking --
+implementations might choose a particular balance, or adjust their
+aggressiveness based on observed network characteristics.
+
+## Timely Delete Completion versus State Commitment
+
+In QPACK, the encoder can enable deletes to complete more quickly by maintaining
+a complete history of which streams have referenced any given table entry and
+providing this list as part of the delete instruction.  This history can be
+pruned without performance impact by removing entries where all data is known to
+have been successfully delivered and interpreted, if some transport coordination
+is employed.
+
+The encoder can also choose to maintain less state by advancing the Horizon
+value (see {{stream-id-list}}).  This value indicates the starting point of the
+provided history, and can be advanced arbitrarily far to discard history.  This
+comes at the potential cost of a decoder taking longer to acknowledge that
+entries have been removed, but this cost is zero if all previous requests are
+known to have completed.  An encoder which chooses to maintain no history
+would simply supply a Horizon value of a stream which has not yet been used,
+meaning that deletes cannot complete until all currently-active requests have
+completed.
+
+A decoder can perform the same trade-off in the event the encoder's supplied
+history is more state than it wishes to track.
+
 # Performance Considerations
 
 While QPACK is designed to minimize head-of-line blocking between streams on

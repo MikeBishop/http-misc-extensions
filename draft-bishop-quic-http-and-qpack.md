@@ -502,6 +502,11 @@ In this section, potential areas for implementation tuning are explored.
 
 ## Compression Efficiency versus Blocking Avoidance
 
+References to indexed entries will block if the frame containing the entry
+definition is lost or delayed. Encoders MAY choose to trade off compression
+efficiency and avoid blocking by using literal instructions rather than
+referencing the dynamic table until the insertion is believed to be complete.
+
 The most efficient compression algorithm will reference a table entry whenever
 it exists in the table, but risks blocking when subject to packet loss or
 reordering.  The most conservative algorithm will always emit literals to
@@ -517,55 +522,45 @@ Increases in efficiency can be achieved by assuming greater risk of blocking --
 implementations might choose a particular balance, or adjust their
 aggressiveness based on observed network characteristics.
 
-## Timely Delete Completion versus State Commitment
-
-In QPACK, the encoder can enable deletes to complete more quickly by maintaining
-a complete history of which streams have referenced any given table entry and
-providing this list as part of the delete instruction.  This history can be
-pruned without performance impact by removing entries where all data is known to
-have been successfully delivered and interpreted, if some transport coordination
-is employed.
-
-The encoder can also choose to maintain less state by advancing the Horizon
-value (see {{stream-id-list}}).  This value indicates the starting point of the
-provided history, and can be advanced arbitrarily far to discard history.  This
-comes at the potential cost of a decoder taking longer to acknowledge that
-entries have been removed, but this cost is zero if all previous requests are
-known to have completed.  An encoder which chooses to maintain no history
-would simply supply a Horizon value of a stream which has not yet been used,
-meaning that deletes cannot complete until all currently-active requests have
-completed.
-
-A decoder can perform the same trade-off in the event the encoder's supplied
-history is more state than it wishes to track.
-
-# Performance Considerations
-
-While QPACK is designed to minimize head-of-line blocking between streams on
-header decoding, there are some situations in which lost or delayed packets can
-still impact the performance of header compression.
-
-References to indexed entries will block if the frame containing the entry
-definition is lost or delayed. Encoders MAY choose to trade off compression
-efficiency and avoid blocking by using literal instructions rather than
-referencing the dynamic table until the insertion is believed to be complete.
-
 Since it is possible to insert header values without emitting them on a stream,
-an encoder MAY proactively insert header values which it believes will be needed
-on future requests.
-
-Delayed frames which prevent deletes from completing can prevent the encoder
-from adding any new entries due to the maximum table size. This does not block
-the encoder from continuing to make requests, but could sharply limit
-compression performance. Encoders would be well-served to delete entries in
-advance of encountering the table maximum. Decoders SHOULD be prompt about
-emitting Delete-Ack instructions to enable the encoder to recover the table
-space.
+an encoder MAY also proactively insert header values which it believes will be
+needed on future requests, at the cost of reduced compression efficiency for
+incorrect predictions.
 
 The ability to split updates to the header table into discrete messages reduces
 the possibility for head-of-line blocking within the table update streams.
 Implementations SHOULD limit the size of table update messages to avoid
 head-of-line blocking within these messages.
+
+
+## Timely Delete Completion versus State Commitment
+
+Anything which prevent deletes from completing can prevent the encoder from
+adding any new entries due to the maximum table size. This does not block the
+encoder from continuing to make requests, but could sharply limit compression
+performance. Encoders would be well-served to delete entries in advance of
+encountering the table maximum. Decoders SHOULD be prompt about emitting
+Delete-Ack instructions to enable the encoder to recover the table space.
+
+The encoder can enable deletes to complete more quickly by maintaining a
+complete history of which streams have referenced any given table entry and
+providing this list as part of the delete instruction.  The encoder can also
+choose to maintain less state by advancing the Horizon value (see
+{{stream-id-list}}).  This value indicates the starting point of the provided
+history, and can be advanced arbitrarily far to discard history.  This comes at
+the potential cost of a decoder taking longer to acknowledge that entries have
+been removed, but this cost is zero if all previous requests are known to have
+completed.  Therefore, this history can be pruned without performance impact by
+removing entries where all data is known to have been successfully delivered and
+interpreted, if some transport coordination is employed.
+
+An encoder which chooses to maintain no history would simply supply a Horizon
+value of a stream which has not yet been used, meaning that deletes cannot
+complete until all currently-active requests have completed.
+
+A decoder can perform the same trade-off in the event the encoder's supplied
+history is more state than it wishes to track.
+
 
 # Security Considerations
 

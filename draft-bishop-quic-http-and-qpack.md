@@ -104,13 +104,13 @@ as messages using unidirectional QUIC streams.
 ## Changes to Static and Dynamic Tables
 
 QPACK uses two tables for associating header fields to indexes. The static
-table is unchanged from [RFC7541].
+table is unchanged from [RFC7541]. Unlike in [RFC7541], the tables are not
+concatenated, but are referenced separately.
 
 The dynamic table is a map from index to header field. Indices are arbitrary
-numbers greater than the last index of the static table and less than 2^27. Each
-insert instruction will specify the index being modified. While any index MAY be
-chosen for a new entry, smaller numbers will yield better compression
-performance.
+numbers between 1 and 2^27. Each insert instruction will specify the index being
+modified. While any index MAY be chosen for a new entry, smaller numbers will
+yield better compression performance.
 
 The dynamic table is still constrained to the size specified by the decoder. An
 attempt to add a header to the dynamic table which causes it to exceed the
@@ -213,16 +213,17 @@ This value is always greater than the number of entries in the static table.
 
 If the header field name matches the header field name of an entry stored in the
 static table or the dynamic table, the header field name can be represented
-using the index of that entry. In this case, the index of the entry is
-represented as an integer with an 8-bit prefix (see Section 5.1 of [RFC7541]).
-This value is always non-zero.
+using the index of that entry. In this case, the `S` bit indicates whether the
+reference is to the static (S=1) or dynamic (S=0) table and the index of the
+entry is represented as an integer with an 7-bit prefix (see Section 5.1 of
+[RFC7541]). This value is always non-zero.
 
 ~~~~~~~~~~
      0   1   2   3   4   5   6   7
    +---+---+---+---+---+---+---+---+
    | 1 |       New Index (7+)      |
    +---+---+-----------------------+
-   |          Name Index (8+)      |
+   | S |       Name Index (7+)     |
    +---+---------------------------+
    | H |     Value Length (7+)     |
    +---+---------------------------+
@@ -232,8 +233,8 @@ This value is always non-zero.
 {: title="Insert Header Field -- Indexed Name"}
 
 Otherwise, the header field name is represented as a string literal (see Section
-5.2 of [RFC7541]). A value 0 is used in place of the 8-bit index, followed by
-the header field name.
+5.2 of [RFC7541]). A value 0 is used in place of the table reference, followed
+by the header field name.
 
 ~~~~~~~~~~
      0   1   2   3   4   5   6   7
@@ -264,8 +265,8 @@ error.
 ### Delete
 
 A deletion from the header table starts with the '00' two bit pattern, followed
-by the index of the affected entry represented as an integer with a 6-bit prefix.
-This value is always greater than the number of entries in the static table.
+by the index of the affected entry in the dynamic table represented as an
+integer with a 6-bit prefix.
 
 A delete instruction then encodes a series of stream IDs which might have
 contained references to the entry in question.
@@ -376,8 +377,7 @@ correctness of the requirements above.
 
 Confirmation that a delete has completed is expressed by an instruction which
 starts with the '01' two-bit pattern, followed by the index of the affected
-entry represented as an integer with a 6-bit prefix. This value is always
-greater than the number of entries in the static table.
+dynamic table entry represented as an integer with a 6-bit prefix.
 
 Note that unlike all other instructions, this instruction refers to the
 receiver's dynamic table, not the sender's.
@@ -408,14 +408,15 @@ decoded header list, as described in Section 3.2 of [RFC7541].
 ~~~~~~~~~~
   0   1   2   3   4   5   6   7
 +---+---+---+---+---+---+---+---+
-| 1 |        Index (7+)         |
+| 1 | S |      Index (6+)       |
 +---+---------------------------+
 ~~~~~~~~~~
 {: title="Indexed Header Field"}
 
-An indexed header field starts with the '1' 1-bit pattern, followed by the index
-of the matching header field, represented as an integer with a 7-bit prefix (see
-Section 5.1 of [RFC7541]).
+An indexed header field starts with the '1' 1-bit pattern, followed by the `S`
+bit indicating whether the reference is into the static (S=1) or dynamic (S=0)
+table. Finally, the index of the matching header field is represented as an
+integer with a 6-bit prefix (see Section 5.1 of [RFC7541]).
 
 The index value of 0 is not used.  It MUST be treated as a decoding error if
 found in an indexed header field representation.
@@ -436,14 +437,15 @@ them (see Section 7.1 of [RFC7541] for more details).
 
 If the header field name matches the header field name of an entry stored in the
 static table or the dynamic table, the header field name can be represented
-using the index of that entry. In this case, the index of the entry is
-represented as an integer with a 6-bit prefix (see Section 5.1 of [RFC7541]).
-This value is always non-zero.
+using the index of that entry. In this case, the `S` bit indicates whether the
+reference is to the static (S=1) or dynamic (S=0) table and the index of the
+entry is represented as an integer with an 5-bit prefix (see Section 5.1 of
+[RFC7541]). This value is always non-zero.
 
 ~~~~~~~~~~
      0   1   2   3   4   5   6   7
    +---+---+---+---+---+---+---+---+
-   | 0 | N |    Name Index (6+)    |
+   | 0 | N | S |  Name Index (5+)  |
    +---+---+-----------------------+
    | H |     Value Length (7+)     |
    +---+---------------------------+
@@ -473,7 +475,7 @@ the header field name.
 {: title="Literal Header Field -- Literal Name"}
 
 Either form of header field name representation is followed by the header field
-value represented as a string literal (see Section 5.2).
+value represented as a string literal (see Section 5.2 of [RFC7541]).
 
 # Use in HTTP/QUIC
 

@@ -22,8 +22,8 @@ author:
  -
     ins: M. Bishop
     name: Mike Bishop
-    org: Microsoft
-    email: Michael.Bishop@microsoft.com
+    org: Akamai
+    email: mbishop@evequefou.be
 
 
 --- abstract
@@ -456,3 +456,6 @@ Matthew Cox, Ivan Pashov, Osama Mazahir, and Gabriel Montenegro.
 Thanks to the following individuals who provided helpful feedback and
 contributed to discussions on this document: Paul Leach, Nathan Ide
 and Rob Trace.
+
+A substantial portion of Mike's work on this draft was supported by Microsoft
+during his employment there.

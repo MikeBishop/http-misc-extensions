@@ -17,8 +17,8 @@ author:
  -
     ins: M. Bishop
     name: Mike Bishop
-    organization: Microsoft
-    email: michael.bishop@microsoft.com
+    organization: Akamai
+    email: mbishop@evequefou.be
 
 normative:
   RFC7540:
@@ -591,5 +591,8 @@ authors is gratefully acknowledged, as well as ideas gleefully stolen from:
   - Martin Thomson
   - Charles 'Buck' Krasic
   - Kyle Rose
+
+A substantial portion of Mike's work on this draft was supported by Microsoft
+during his employment there.
 
 --- back

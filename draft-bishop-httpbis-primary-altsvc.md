@@ -107,9 +107,10 @@ Syntax:
 
 When processing such an alternative, clients SHOULD present the hostname given
 in the `sni` parameter in the SNI extension during the TLS handshake.  The
-client MAY choose not to validate this certificate for authenticity according to
-{{!RFC2818}}, but MUST NOT make requests to the origin corresponding to this
-certificate unless the certificate has been successfully validated.
+client MAY choose not to validate the certificate in the handshake for
+authenticity according to {{!RFC2818}}, but MUST NOT make requests to any origin
+corresponding to this certificate unless the certificate has been successfully
+validated.
 
 Immediately upon connecting, the client SHOULD send a `CERTIFICATE_REQUEST`
 frame including an SNI extension indicating the origin which published the

@@ -123,11 +123,10 @@ alternative connection to have failed.
 {{!AltSvc}} permits clients to ignore unrecognized parameters.  As a result,
 servers publishing records with the `sni` parameter cannot be assured that
 clients will not include their origin in the SNI header when connecting to the
-nominated alternative.
-
-If, for security reasons, an origin wishes its identity never to be disclosed
-when the alternative is being used, an alternative mechanism would be required
-to ascertain client support before generating the Alt-Svc record.
+nominated alternative.  If, for security reasons, an origin wishes its identity
+never to be disclosed when the alternative is being used, an alternative
+mechanism would be required to ascertain client support before generating the
+Alt-Svc record.
 
 Clients will need to connect directly to the origin at least once in order to
 receive the Alt-Svc entry via an HTTP header or `ALTSVC` frame, thus disclosing

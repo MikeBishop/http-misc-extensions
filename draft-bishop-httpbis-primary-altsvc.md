@@ -147,7 +147,7 @@ unauthenticated parties.
 
 The "Hypertext Transfer Protocol (HTTP) Alt-Svc Parameter Registry" defines the
 name space for parameters, as described in {{!AltSvc}}.  It is maintained at
-<http://www.iana.org/assignments/http-alt-svc- parameters>.
+<http://www.iana.org/assignments/http-alt-svc-parameters>.
 
 This document registers the following parameter:
 

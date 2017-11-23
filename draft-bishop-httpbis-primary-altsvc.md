@@ -87,6 +87,10 @@ The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD",
 document are to be interpreted as described in BCP 14 {{!RFC2119}} {{!RFC8174}}
 when, and only when, they appear in all capitals, as shown here.
 
+The key words "MUST (BUT WE KNOW YOU WON'T)", "SHOULD CONSIDER", "REALLY SHOULD
+NOT", "OUGHT TO", "WOULD PROBABLY", "MAY WISH TO", "COULD", "POSSIBLE", and
+"MIGHT" in this document are to be interpreted as described in {{!RFC6919}}.
+
 Field definitions are given in Augmented Backus-Naur Form (ABNF), as defined in
 {{!RFC5234}}.
 
@@ -131,6 +135,13 @@ their use of the origin to the network on the first connection. This could be
 mitigated by future work defining a way to publish alternative services in a
 mechanism which can be retrieved confidentially, such as via DNS in combination
 with {{?RFC7858}} or {{?DoH=I-D.ietf-doh-dns-over-https}}.
+
+However, servers which publish Alt-Svc records over unencrypted channels (HTTP
+connections without TLS) or channels without client authorization (DNS, or
+publicly accessible HTTP resources) enable active observers to build a map of
+fronting servers by collecting Alt-Svc advertisements.  Servers SHOULD CONSIDER
+this trade-off in deciding when and how to make Alt-Svc records available to
+unauthenticated parties.
 
 # IANA Considerations
 

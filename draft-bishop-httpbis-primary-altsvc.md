@@ -74,8 +74,8 @@ directly to the origin.
 
 The extension described in {{extension}} enables an origin to declare that
 reasonable assurances should be obtained, not by requesting the desired hostname
-in the SNI header, but by requesting it via {{!SecondaryCerts}}.  The validation
-checks from {{!RFC2818}} are applied to this certificate.
+in the TLS handshake, but by requesting it via {{!SecondaryCerts}}.  The
+validation checks from {{!RFC2818}} are applied to this certificate.
 
 Because the entire exchange happens inside TLS, a passive observer cannot
 identify the hostname(s) the client might be requesting.

@@ -1,7 +1,7 @@
 ---
 title: The "SNI" Alt-Svc Parameter
 abbrev: SNI Alt-Svc
-docname: draft-bishop-httpbis-primary-altsvc-latest
+docname: draft-bishop-httpbis-sni-altsvc-latest
 date: {DATE}
 category: std
 

@@ -26,7 +26,7 @@ informative:
 
 --- abstract
 
-HTTP Alternative Services {{!AltSvc=RFC7838}} provide a mechanism for an origin
+HTTP Alternative Services {{!AltSvc=RFC7838}} provides a mechanism for an origin
 to declare that its content is accessible via some other combination of host,
 port, and protocol.  In the process of using such an alternative, an observer
 can identify that the client is requesting resources from a particular hostname.
@@ -101,9 +101,9 @@ parameter in its alternative service entry.
 
 Syntax:
 
-    sni = uri-host
+    sni = host
 
-`uri-host` is defined as `host` in Section 3.2.2 of {{!RFC3986}}.
+`host` is defined in Section 3.2.2 of {{!RFC3986}}.
 
 When processing such an alternative, clients SHOULD present the hostname given
 in the `sni` parameter in the SNI extension during the TLS handshake.  The

@@ -52,10 +52,14 @@ after the handshake (in TLS 1.2) or by using TLS 1.3
 {{!TLS13=I-D.ietf-tls-tls13}}, the server is not afforded such privacy
 considerations.
 
-{{?SNIEncryption=I-D.ietf-tls-sni-encryption}} discusses some solutions in
-Section 3, HTTP Co-Tenancy Fronting, but notes both discoverability and server
-authentication issues with that approach. This document provides a mechanism to
-address both limitations.
+Servers may also have wildcard certificates which do not enumerate specific
+subdomains, but clients will disclose the first subdomain used on a connection
+via the SNI extension when establishing the connection.
+
+{{?SNIEncryption=I-D.ietf-tls-sni-encryption}} discusses a potential solution to
+these issues in Section 3, HTTP Co-Tenancy Fronting, but notes both
+discoverability and server authentication issues with that approach. This
+document provides a mechanism to address both limitations.
 
 ## Usage
 
@@ -106,18 +110,20 @@ Syntax:
 `host` is defined in Section 3.2.2 of {{!RFC3986}}.
 
 When processing such an alternative, clients SHOULD present the hostname given
-in the `sni` parameter in the SNI extension during the TLS handshake.  The
-client MAY choose not to validate the certificate in the handshake for
-authenticity according to {{!RFC2818}}, but MUST NOT make requests to any origin
-corresponding to this certificate unless the certificate has been successfully
-validated.
+in the `sni` parameter in the SNI extension during the TLS handshake.
+If the resulting certificate is also for the origin which published the
+alternative service, the client MUST validate the certificate in the handshake
+for authenticity according to {{!RFC2818}}.
 
-Immediately upon connecting, the client SHOULD send a `CERTIFICATE_REQUEST`
-frame including an SNI extension indicating the origin which published the
-alternative service.  If no corresponding `CERTIFICATE` frame is presented by
-the server after a reasonable timeout, or if the server's SETTINGS frame does
-not include the `SETTINGS_HTTP_CERT_AUTH` setting, the client MUST consider the
-alternative connection to have failed.
+Otherwise, the client MAY choose not to validate the certificate, but MUST NOT
+make requests to any origin corresponding to this certificate unless the
+certificate has been successfully validated.  In this case, the client SHOULD
+send a `CERTIFICATE_REQUEST` frame including an SNI extension indicating the
+origin which published the alternative service immediately upon connecting.  If
+no corresponding `CERTIFICATE` frame is presented by the server after a
+reasonable timeout, or if the server's SETTINGS frame does not include the
+`SETTINGS_HTTP_CERT_AUTH` setting, the client MUST consider the alternative
+connection to have failed.
 
 # Security Considerations
 

@@ -141,7 +141,7 @@ arrive; it is not necessary (and might not be desirable) to wait for all
 instructions associated with a checkpoint to arrive before beginning to process
 it.
 
-The encoder always has at least one checkpoint in the NEW state.  Flushing a
+The encoder typically has at least one checkpoint in the NEW state.  Flushing a
 checkpoint is a two-step operation.  First, the checkpoint's management stream
 is closed. At that time, the encoder's NEW checkpoint becomes PENDING.  The
 decoder moves its NEW checkpoint directly to LIVE and responds with an ACK_FLUSH
@@ -149,24 +149,23 @@ message on the feedback stream.  When the encoder receives this message, its
 PENDING checkpoint becomes LIVE.
 
 Unused entries are evicted indirectly, by dropping checkpoints. Before a
-checkpoint can be dropped, its state is changed to DYING: the encoder cannot use
-an entry for encoding that is not referenced by a LIVE checkpoint.  Changing a
+checkpoint can be dropped, its state is changed to DYING.  Changing a
 checkpoint's state to DYING allows the checkpoint to age out.  The encoder can
-change a DYING checkpoint to DEAD when it is no longer referenced by any active
-streams, and remove it once the drop has been acknowledged by an ACK_DROP
-message.
+change a DYING checkpoint to DEAD (sending a DROP instruction) when it is no
+longer referenced by any outstanding header blocks, and remove it once the drop
+has been acknowledged by an ACK_DROP message.
 
 The feedback stream is used to notify the encoder that the peer is done decoding
 HTTP headers for a stream using the HEADERS_DONE message.  The encoder uses this
 information to track which checkpoints can be dropped.
 
-The encoder sends the DROP_CHKPOINT command to the decoder when it drops a
-checkpoint; the decoder responds with an ACK_DROP message.  When a checkpoint is
-dropped, the table entries it references are checked: if an entry is no longer
-referenced by any checkpoint, the entry is evicted.
+The encoder sends the DROP command to the decoder when it drops a checkpoint;
+the decoder responds with an ACK_DROP message.  When a checkpoint is dropped,
+the table entries it references are checked: if an entry is no longer referenced
+by any checkpoint, the entry is evicted.
 
 Dropping a checkpoint and the entries associated with it is not limited to just
-the oldest checkpoint; any DEAD checkpoint -- as long as state transition rules
+the oldest checkpoint; any DYING checkpoint -- as long as state transition rules
 are followed -- may be dropped.  This flexibility permits the encoder to use a
 number of strategies for entry eviction.
 
@@ -179,15 +178,29 @@ effectively.
 
 ### Permitted References
 
-An encoder MAY encode headers using any static table entry or any dynamic header
-table entry referenced by a LIVE checkpoint.
+When encoding headers on a request stream or referencing existing entries in a
+checkpoint stream, an encoder MAY reference any static table entry or any
+dynamic header table entry referenced by a LIVE checkpoint.  References to
+entries in NEW or PENDING checkpoints are permitted only if the client has set
+`SETTING_QPACK_BLOCKING_PERMITTED` (see {{setting-block}}).
+
+If a decoder receives a reference to an empty slot in the dynamic table but has
+not sent `SETTING_QPACK_BLOCKING_PERMITTED`, this MUST be treated as:
+
+- A stream error of type `ERROR_QPACK_INVALID_REFERENCE` if on a request stream
+- A connection error of type `ERROR_INVALID_REFERENCE` if on a checkpoint stream
+
+Since DYING is a purely internal state to the encoder, a DYING checkpoint can be
+returned to LIVE with no peer-visible change.  Thus, references to DYING
+checkpoints are possible, but usually inadvisable.  Table entries contained only
+in a DEAD checkpoint can never be referenced.
 
 ### Header Table Size
 
 As in HPACK, the dynamic table is constrained to the maximum size specified by
 the decoder. An attempt to add a header to the dynamic table or to create a new
 checkpoint which causes it to exceed the maximum size MUST be treated as an
-error by a decoder.  To enable encoders to reclaim space, encoders can delete
+error by a decoder.  To enable encoders to reclaim space, encoders can drop old
 checkpoints (see {{checkpoints}}).
 
 The total table size is calculated as follows:
@@ -214,8 +227,7 @@ upon removal, would bring the table within the required size.
 Regardless of changes to header table size, the encoder MUST NOT create new
 checkpoints or add entries to the table which would result in a size greater
 than the maximum permitted.  This can imply that no additions are permitted
-while waiting for these delete instructions to complete.
-
+while waiting for old checkpoints to complete.
 
 
 # Wire Format
@@ -225,12 +237,12 @@ instruction space.
 
 The feedback stream is a bidirectional server-initiated stream used for
 acknowledgement of actions and checkpoint state management.  Checkpoint streams
-are unidirectional streams in either direction. Both types of streams consist of
-a series of QPACK instructions with no message boundaries, preceded by a stream
-header for checkpoint streams.
+are unidirectional streams from encoder to decoder. Both types of streams
+consist of a series of QPACK instructions with no message boundaries, preceded
+by a stream header for checkpoint streams.
 
-Finally, the contents of HEADERS frames on request streams reference the QPACK
-table state.
+Finally, the contents of HEADERS and PUSH_PROMISE frames on request streams
+reference the QPACK table state.
 
 This section describes the instructions which are possible on each stream type.
 
@@ -320,22 +332,25 @@ checkpoint.
 
 ## Checkpoint Streams
 
-Data on checkpoint streams SHOULD be processed as soon as it arrives.  While
-QUIC provides ordering between data on each such stream, QPACK imposes no
-ordering between instructions received on different streams. Implementations
-which opt to service only one checkpoint stream at a time SHOULD do so in
-order of increasing Stream ID.
+Each checkpoint stream indicates the creation and content of a NEW checkpoint.
+When the encoder has finished writing all data on the stream, it changes the
+checkpoint to PENDING.  When the decoder has received and processed all data on
+the stream, it changes the checkpoint to LIVE and generates an ACK_FLUSH.
 
-Unidirectional streams in HTTP/QUIC begin with a stream header indicating
-the nature of the stream content; the identifier for QPACK checkpoints is
-0x4B.
+Unidirectional streams in HTTP/QUIC begin with a stream header indicating the
+nature of the stream content; the identifier for QPACK checkpoints is 0x4B.
 
 > **Note to readers:** This header does not currently exist in the main draft,
 > but has manifested in several PRs, and would need to be resurrected.
 
-Following the stream header, a checkpoint stream contains its
-checkpoint ID as an 8-bit prefix integer. The remainder of the stream's data
-consists of the instructions defined in this section.
+Following the stream header, a checkpoint stream contains its checkpoint ID as
+an 8-bit prefix integer. The remainder of the stream's data consists of the
+instructions defined in this section.
+
+Data on checkpoint streams SHOULD be processed as soon as it arrives.
+If multiple checkpoint streams are received at once, a decoder SHOULD process
+data on each as it arrives if it has sent `SETTINGS_QPACK_BLOCKING_PERMITTED`,
+but MAY process checkpoint streams one at a time.
 
 ### INSERT
 
@@ -350,6 +365,10 @@ using the index of that entry. In this case, the `S` bit indicates whether the
 reference is to the static (S=1) or dynamic (S=0) table and the index of the
 entry is represented as an integer with an 7-bit prefix (see Section 5.1 of
 [RFC7541]). This value is always non-zero.
+
+If an INSERT instruction uses an existing dynamic table entry for the name of an
+entry being added to the NEW checkpoint, both the existing entry and the new
+entry are referenced by the NEW checkpoint.
 
 ~~~~~~~~~~
      0   1   2   3   4   5   6   7
@@ -515,6 +534,31 @@ successive HEADERS frames.  A partial HEADERS or PUSH_PROMISE frame MAY be
 processed upon arrival and the resulting partial header set emitted or buffered
 according to implementation requirements.
 
+## SETTING_QPACK_BLOCKING_PERMITTED {#setting-block}
+
+An HTTP/QUIC implementation can trade off the complexity of its QPACK decoder
+against compression efficiency by permitting the peer's compressor to reference
+unacknowledged entries.  In the case of loss on a checkpoint stream, such
+references might cause the processing of request streams or other checkpoint
+streams to block, waiting for the arrival of missing data.
+
+If the decoder permits the encoder to make blocking references, it sets
+`SETTING_QPACK_BLOCKING_PERMITTED` (0xSETTING-TBD1) to true.  In the default
+setting, false, the encoder MUST NOT encode a header using a format that might
+block.
+
+## SETTING_QPACK_INITIAL_CHECKPOINT {#setting-initial}
+
+An HTTP/QUIC implementation MAY include the `SETTING_QPACK_INITIAL_CHECKPOINT`
+(0xSETTING_TBD2) setting, containing the full serialization of an initial
+checkpoint stream's data.  If present, this setting MUST be fully processed by
+the peer before decoding any checkpoint streams or header frames on request
+streams.
+
+The checkpoint defined by this setting is considered LIVE by both the encoder
+and the decoder from the beginning of the connection.  The decoder does not need
+to send an ACK_FLUSH message confirming receipt of this setting.
+
 # Implementation trade-offs
 
 This document specifies a means for the encoder to express the choices it made
@@ -523,10 +567,11 @@ In this section, potential areas for implementation tuning are explored.
 
 ## Compression Efficiency versus Blocking Avoidance
 
-References to indexed entries will block if the frame containing the entry
-definition is lost or delayed. Encoders MAY choose to trade off compression
-efficiency and avoid blocking by using literal instructions rather than
-referencing the dynamic table until the insertion is believed to be complete.
+If blocking references are permitted, they will block if the frame containing
+the entry definition is lost or delayed. Encoders MAY choose to trade off
+compression efficiency and avoid blocking by using literal instructions rather
+than referencing the dynamic table until the insertion is believed to be
+complete.
 
 The most efficient compression algorithm will reference a table entry whenever
 it exists in the table, but risks blocking when subject to packet loss or
@@ -574,7 +619,50 @@ this state is bounded.
 
 # IANA Considerations
 
-This document currently makes no request of IANA, and might not need to.
+This document registers two settings and one error code with the corresponding
+HTTP/QUIC registries.
+
+## Settings
+
+This document registers two entries in the "HTTP/QUIC Settings" registry established by
+[I-D.ietf-quic-http].
+
+Setting Name:
+: SETTING_QPACK_BLOCKING_PERMITTED
+
+Code:
+: 0xSETTING-TBD1
+
+Specification:
+: {{setting-block}}
+
+and
+
+Setting Name:
+: SETTING_QPACK_INITIAL_CHECKPOINT
+
+Code:
+: 0xSETTING-TBD2
+
+Specification:
+: {{setting-initial}}
+
+## Errors
+
+This document registers one error code in the "HTTP/QUIC Error Code" registry
+established by [I-D.ietf-quic-http].
+
+Error name:
+: ERROR_QPACK_INVALID_REFERENCE
+
+Code:
+: 0xERROR-TBD
+
+Description:
+: A blocking reference was received by a decoder which did not permit it
+
+Specification:
+: {{permitted-references}}
 
 # Acknowledgements {#ack}
 

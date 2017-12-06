@@ -67,7 +67,7 @@ even if that stream is reset, QUIC does not retransmit lost frames if a stream
 has been reset, and may discard data which has not yet been delivered to the
 application.
 
-Previous versions of QPACK were small deltas of HPACK to introduce
+Early versions of QPACK were small deltas of HPACK to introduce
 order-resiliency. This version departs from HPACK more substantially to add
 resilience against reset message streams.
 
@@ -83,15 +83,15 @@ NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" are to be
 interpreted as described in BCP 14, [RFC2119] and indicate requirement levels
 for compliant implementations.
 
-# QPACK {#QPACK}
-
-## Basic model
+# QPACK - Concepts {#QPACK}
 
 HPACK combines header table modification and message header emission in a single
-sequence of coded bytes.  QPACK bifurcates these into two channels:
+sequence of coded bytes.  QPACK bifurcates these into three channels:
 
   - Connection-wide sets of table update instructions sent on non-request
     streams
+  - Connection-wide feedback on stream and checkpoint state on a single
+    non-request stream
   - Non-modifying instructions which use the current header table state to
     encode message headers on request streams
 
@@ -112,20 +112,91 @@ numbers between 1 and 2^27. Each insert instruction will specify the index being
 modified. While any index MAY be chosen for a new entry, smaller numbers will
 yield better compression performance.
 
-The dynamic table is still constrained to the size specified by the decoder. An
-attempt to add a header to the dynamic table which causes it to exceed the
-maximum size MUST be treated as an error by a decoder.  To enable encoders to
-reclaim space, encoders can delete entries in the dynamic table, but can only
-reuse the index or the space after receiving confirmation of a successful
-deletion.
-
 Because it is possible for QPACK frames to arrive which reference indices which
 have not yet been defined, such frames MUST wait until another frame has
 arrived and defined the index. In order to guard against malicious peers,
 implementations SHOULD impose a time limit and treat expiration of the timer as
 a decoding error.
 
-### Changes to Header Table Size
+### Dynamic Table State Synchronization {#checkpoints}
+
+In order to ensure table consistency, all modifications of the header table
+occur as separate messages rather than on request streams.  Request streams
+contain only indexed and literal header entries.
+
+No entries are automatically evicted from the dynamic table. Size management is
+purely the responsibility of the encoder, which MUST NOT exceed the declared
+memory size of the decoder.
+
+To simplify state management in the dynamic table, *checkpoints* are introduced.
+A checkpoint is used to track entries added to the dynamic table and streams
+that reference those entries, rather than maintaining the full state of which
+streams reference which table entries.
+
+Checkpoints are unordered and have an identifier which MUST be unique among
+checkpoints which have not been dropped.  Each checkpoint has a unidirectional
+stream which begins with its identifier and contains a series of updates
+associated with that checkpoint.  These updates SHOULD be processed as they
+arrive; it is not necessary (and might not be desirable) to wait for all
+instructions associated with a checkpoint to arrive before beginning to process
+it.
+
+The encoder always has at least one checkpoint in the NEW state.  Flushing a
+checkpoint is a two-step operation.  First, the checkpoint's management stream
+is closed. At that time, the encoder's NEW checkpoint becomes PENDING.  The
+decoder moves its NEW checkpoint directly to LIVE and responds with an ACK_FLUSH
+message on the feedback stream.  When the encoder receives this message, its
+PENDING checkpoint becomes LIVE.
+
+Unused entries are evicted indirectly, by dropping checkpoints. Before a
+checkpoint can be dropped, its state is changed to DYING: the encoder cannot use
+an entry for encoding that is not referenced by a LIVE checkpoint.  Changing a
+checkpoint's state to DYING allows the checkpoint to age out.  The encoder can
+change a DYING checkpoint to DEAD when it is no longer referenced by any active
+streams, and remove it once the drop has been acknowledged by an ACK_DROP
+message.
+
+The feedback stream is used to notify the encoder that the peer is done decoding
+HTTP headers for a stream using the HEADERS_DONE message.  The encoder uses this
+information to track which checkpoints can be dropped.
+
+The encoder sends the DROP_CHKPOINT command to the decoder when it drops a
+checkpoint; the decoder responds with an ACK_DROP message.  When a checkpoint is
+dropped, the table entries it references are checked: if an entry is no longer
+referenced by any checkpoint, the entry is evicted.
+
+Dropping a checkpoint and the entries associated with it is not limited to just
+the oldest checkpoint; any DEAD checkpoint -- as long as state transition rules
+are followed -- may be dropped.  This flexibility permits the encoder to use a
+number of strategies for entry eviction.
+
+As long as the maximum dynamic table size is observed, new checkpoints can be
+created; no upper limit on the number of checkpoints is specified.  A
+well-balanced spread of checkpoints permits the encoder to recycle entries
+effectively.
+
+## Encoding Constraints
+
+### Permitted References
+
+An encoder MAY encode headers using any static table entry or any dynamic header
+table entry referenced by a LIVE checkpoint.
+
+### Header Table Size
+
+As in HPACK, the dynamic table is constrained to the maximum size specified by
+the decoder. An attempt to add a header to the dynamic table or to create a new
+checkpoint which causes it to exceed the maximum size MUST be treated as an
+error by a decoder.  To enable encoders to reclaim space, encoders can delete
+checkpoints (see {{checkpoints}}).
+
+The total table size is calculated as follows:
+
+  - The size of each entry is calculated as in HPACK
+  - Each checkpoint that has not been removed, regardless of state, consumes 64
+    bytes
+
+#### Table Size Changes
 
 HTTP/QUIC prohibits mid-stream changes of settings.  As a result, only one table
 size change is possible:  From the value a client assumes during the 0-RTT
@@ -137,79 +208,141 @@ its maximum table size during the first round-trip.
 In the case that the value has increased, either from zero to a non-zero value
 or from the cached value to a higher value, no action is required by the client.
 The encoder can simply begin using the additional space.  In the case that the
-value has decreased, the encoder MUST immediately emit delete instructions
-which, upon completion, would bring the table within the required size.
+value has decreased, the encoder MUST move checkpoints to the DYING state which,
+upon removal, would bring the table within the required size.
 
-Regardless of changes to header table size, the encoder MUST NOT add entries to
-the table which would result in a size greater than the maximum permitted.  This
-can imply that no additions are permitted while waiting for these delete
-instructions to complete.
+Regardless of changes to header table size, the encoder MUST NOT create new
+checkpoints or add entries to the table which would result in a size greater
+than the maximum permitted.  This can imply that no additions are permitted
+while waiting for these delete instructions to complete.
 
-### Dynamic Table State Synchronization
 
-In order to ensure table consistency, all modifications of the header table
-occur as separate messages rather than on request streams.  Request streams
-contain only indexed and literal header entries.
 
-No entries are automatically evicted from the dynamic table. Size management is
-purely the responsibility of the encoder, which MUST NOT exceed the declared
-memory size of the decoder.
+# Wire Format
 
-The encoder SHOULD track the following information about each entry in the
-table:
+QPACK instructions occur on three stream types, each of which uses a separate
+instruction space.
 
-  - The list of recently-active streams which reference the entry in a trailer
-    block, if any
-  - The list of recently-active streams which reference the entry in a
-    non-trailer block, if any
+The feedback stream is a bidirectional server-initiated stream used for
+acknowledgement of actions and checkpoint state management.  Checkpoint streams
+are unidirectional streams in either direction. Both types of streams consist of
+a series of QPACK instructions with no message boundaries, preceded by a stream
+header for checkpoint streams.
 
-"Recently-active" streams are those which are still open or were closed less
-than a reasonable number of RTTs ago.  An implementation MAY vary its definition
-of "recent" to trade off memory consumption and timely completion of deletes,
-and tracking no information is a functional (though potentially less performant)
-choice in this space.
+Finally, the contents of HEADERS frames on request streams reference the QPACK
+table state.
 
-The encoder MUST consider memory as committed beginning when the indexed entry
-is assigned.
+This section describes the instructions which are possible on each stream type.
 
-When the encoder wishes to delete an inserted value, it flows through the
-following set of states:
+## Feedback Stream
 
-  1. **Delete requested.**  The encoder emits a delete instruction indicating
-     which streams might have referenced the entry.  The encoder MUST NOT
-     reference the entry in any subsequent frame until this state machine has
-     completed and MUST continue to include the entry in its calculation of
-     consumed memory.
+Stream 1, the first server-initiated bidirectional stream, is used as the
+feedback stream, since the client does not need to begin sending data on this
+stream until it has received data from the server.
 
-  2. **Delete pending.**  The decoder receives the delete instruction and
-     checks the current state of its incoming streams (see
-     {{delete-validation}}).  If more references might arrive, it stores the
-     streams still needed and waits for them to complete.
+This stream is critical to the HTTP/QUIC connection, and carries a stream of the
+instructions defined in this section.  Data on this stream SHOULD be processed
+as soon as it arrives.
 
-  3. **Delete acknowledged.**  The decoder has received all QPACK frames which
-     reference the deleted value, and can safely delete the entry.  The decoder
-     SHOULD promptly emit a Delete-Ack instruction on a header management
-     stream.
+### HEADERS_DONE
 
-  4. **Delete completed.**  When the encoder receives a Delete-Ack instruction
-     acknowledging the delete, it no longer counts the size of the deleted entry
-     against the table size and MAY emit insert instructions for the field with
-     a new value.
+When the decoder has processed a frame containing header emission instructions
+({{request-streams}}, HEADERS or PUSH_PROMISE frames) on a stream, it MUST emit
+a HEADERS_DONE message on the feedback stream.  The same Stream ID can be identified
+multiple times, as multiple header-containing blocks can be sent on a single stream
+in the case of intermediate responses, trailers, pushed requests, etc.
 
-## Header Management Streams
+Since header frames on a request stream are received and processed in order, this
+gives the encoder precise feedback on which header blocks within a stream have been
+fully processed.  This information can then be used to correctly track outstanding
+stream references to checkpoints.
 
-Header management streams are unidirectional streams in either direction which
-contain a series of QPACK instructions with no message boundaries.  Data on
-these streams SHOULD be processed as soon as it arrives.
+~~~~~~~~~~
+  0   1   2   3   4   5   6   7
++---+---+---+---+---+---+---+---+
+| 1 |       Stream ID (7+)      |
++---+---------------------------+
+~~~~~~~~~~
+{: title="HEADERS_DONE instruction"}
 
-This section describes the instructions which are possible on header management
-streams.
+### ACK_FLUSH
 
-### Insert
+When the decoder has finished processing all instructions that make up a
+checkpoint, it MUST indicate successful processing to the encoder by emitting an
+ACK_FLUSH instruction on the feedback stream.
 
-An addition to the header table starts with the '1' one-bit pattern, followed
+Upon emitting an ACK_FLUSH, the checkpoint transitions from NEW to LIVE on the
+decoder. Upon receipt of an ACK_FLUSH, the checkpoint transitions from PENDING
+to LIVE on the encoder.
+
+~~~~~~~~~~
+  0   1   2   3   4   5   6   7
++---+---+---+---+---+---+---+---+
+| 0 | 1 | 0 | Checkpoint ID (5+)|
++---+---------------------------+
+~~~~~~~~~~
+{: title="ACK_FLUSH instruction"}
+
+### DROP
+
+When an encoder has received sufficient HEADERS_DONE messages to know that a
+DYING checkpoint has no outstanding references, it emits a DROP instruction
+to inform the decoder that the checkpoint can be removed.  Upon sending a DROP
+instruction, a DYING checkpoint becomes DEAD.  Upon receiving a DROP instruction,
+a LIVE checkpoint is removed from the decoder state and an ACK_DROP instruction
+is emitted.
+
+~~~~~~~~~~
+  0   1   2   3   4   5   6   7
++---+---+---+---+---+---+---+---+
+| 0 | 1 | 0 | Checkpoint ID (5+)|
++---+---------------------------+
+~~~~~~~~~~
+{: title="DROP instruction"}
+
+### ACK_DROP
+
+When a decoder receives a DROP instruction, it removes the referenced checkpoint
+from its state and clears any table entries which were referenced only by that
+checkpoint.  It then emits an ACK_DROP instruction.  When an encoder receives
+an ACK_DROP instruction, it removes the corresponding DEAD checkpoint from
+its state and clears any table entries which were referenced only by that
+checkpoint.
+
+~~~~~~~~~~
+  0   1   2   3   4   5   6   7
++---+---+---+---+---+---+---+---+
+| 0 | 1 | 1 | Checkpoint ID (5+)|
++---+---------------------------+
+~~~~~~~~~~
+{: title="ACK_DROP instruction"}
+
+
+## Checkpoint Streams
+
+Data on checkpoint streams SHOULD be processed as soon as it arrives.  While
+QUIC provides ordering between data on each such stream, QPACK imposes no
+ordering between instructions received on different streams. Implementations
+which opt to service only one checkpoint stream at a time SHOULD do so in
+order of increasing Stream ID.
+
+Unidirectional streams in HTTP/QUIC begin with a stream header indicating
+the nature of the stream content; the identifier for QPACK checkpoints is
+0x4B.
+
+> **Note to readers:** This header does not currently exist in the main draft,
+> but has manifested in several PRs, and would need to be resurrected.
+
+Following the stream header, a checkpoint stream contains its
+checkpoint ID as an 8-bit prefix integer. The remainder of the stream's data
+consists of the instructions defined in this section.
+
+### INSERT
+
+An addition to the dynamic table starts with the '1' one-bit pattern, followed
 by the new index of the header represented as an integer with a 7-bit prefix.
-This value is always greater than the number of entries in the static table.
+The decoder adds the supplied header to the checkpoint currently being processed,
+which is in the NEW state.
 
 If the header field name matches the header field name of an entry stored in the
 static table or the dynamic table, the header field name can be represented
@@ -230,7 +363,7 @@ entry is represented as an integer with an 7-bit prefix (see Section 5.1 of
    | Value String (Length octets)  |
    +-------------------------------+
 ~~~~~~~~~~
-{: title="Insert Header Field -- Indexed Name"}
+{: title="INSERT instruction -- Indexed Name"}
 
 Otherwise, the header field name is represented as a string literal (see Section
 5.2 of [RFC7541]). A value 0 is used in place of the table reference, followed
@@ -252,7 +385,7 @@ by the header field name.
    | Value String (Length octets)  |
    +-------------------------------+
 ~~~~~~~~~~
-{: title="Insert Header Field -- New Name"}
+{: title="INSERT instruction -- New Name"}
 
 Either form of header field name representation is followed by the header field
 value represented as a string literal (see Section 5.2 of [RFC7541]).
@@ -261,140 +394,25 @@ An encoder MUST NOT attempt to place a value at an index not known to be vacant.
 A decoder MUST treat the attempt to insert into an occupied slot as a fatal
 error.
 
+### TOUCH
 
-### Delete
-
-A deletion from the header table starts with the '00' two bit pattern, followed
-by the index of the affected entry in the dynamic table represented as an
-integer with a 6-bit prefix.
-
-A delete instruction then encodes a series of stream IDs which might have
-contained references to the entry in question.
+This instruction is emitted to link a NEW checkpoint to an existing header table
+entry created by a previous checkpoint. This causes the entry not to be removed
+from the table so long as the current checkpoint is alive.
 
 ~~~~~~~~~~
-     0   1   2   3   4   5   6   7
-   +---+---+---+---+---+---+---+---+
-   | 0 | 0 |      Index (6+)       |
-   +---+---+-----------------------+
-   |     Non-Trailer List (*)    ...
-   +-------------------------------+
-   |       Trailer List (*)      ...
-   +-------------------------------+
+  0   1   2   3   4   5   6   7
++---+---+---+---+---+---+---+---+
+| 0 |         Index (7+)        |
++---+---------------------------+
 ~~~~~~~~~~
-{: title="Delete Instruction"}
+{: title="Indexed Header Field"}
 
-Both the Non-Trailer List and Trailer List are Stream ID Lists (see below)
-encoding a list of streams which might have referenced the entry either in
-non-trailer or trailer blocks.
+The encoder SHOULD NOT issue multiple TOUCH commands for the same entry in the
+context of the same NEW checkpoint.  If a non-existent index is specified, the
+decoder MUST treat is as an error.
 
-#### Stream ID List
-
-A Stream ID List encodes a sequence of stream IDs in two parts:  First, a
-Horizon value indicates the first non-occurrence about which data is maintained.
-If data is maintained from the beginning of the connection, the Horizon is zero.
-This allows senders to succinctly express both old state which has been
-discarded and large regions where many or all streams contain references.
-
-Following the horizon, a sequence of deltas indicates all streams since the
-Horizon on which a value has been used.
-
-This structure permits either side to adjust the amount of tracking complexity
-it is willing to devote to ensure timely deletions.  In the simplest case, a
-Stream ID List might be a horizon value followed by one zero byte.  This
-indicates an absolute cut-off after which the entry is guaranteed not to be
-referenced, and requires the receiver to wait until all prior requests have been
-completed.  Similarly, the receiver can create equivalent-but-less-complex
-forms of a Stream ID list by increasing the Horizon value and discarding all
-explicit stream entries less than the new value.
-
-~~~~~~~~~~
-     0   1   2   3   4   5   6   7
-   +-------------------------------+
-   |          Horizon (8+)         |
-   +-------------------------------+
-   |         NumEntries (8+)       |
-   +-------------------------------+
-   |         [Delta1 (8+)]         |
-   +-------------------------------+
-   |         [Delta2 (8+)]         |
-   +-------------------------------+
-                  ...
-   +-------------------------------+
-   |         [DeltaN (8+)]         |
-   +-------------------------------+
-~~~~~~~~~~
-{: title="Stream ID List"}
-
-The field are as follows:
-
-Horizon:
-: The ID of the first stream for which the sender retains state which does not
-  reference the deleted entry in the indicated block
-
-NumEntries:
-: The number of streams greater than the Horizon which might reference the entry
-  and are listed in the remainder of the instruction
-
-Delta1..N:
-: A sequence of streams greater than the Horizon which might reference the
-  entry, encoded as the difference in stream number from the previously-listed
-  stream.  This field is repeated NumEntries times.
-
-#### Delete Validation {#delete-validation}
-
-In order to safely delete an entry, a decoder MUST ensure that all outstanding
-references have arrived and been processed.  Because no data is available about
-stream IDs less than the Horizon, a decoder MUST assume that any earlier stream
-ID might have contained a reference to the value in question.
-
-A decoder can ensure all outstanding references have been processed by verifying
-that the following statements are true:
-
-- In the Non-Trailer Block, all streams less than the Horizon and all streams
-  explicitly listed are in one of two states:
-    - closed
-    - headers completely processed
-- In the Trailer Block, all streams less than the Horizon and all streams
-  explicitly listed are in one of three states:
-    - closed
-    - headers completely processed AND no trailers are expected
-    - trailers completely processed
-
-An implementation MAY omit the "trailers completely processed" case, since the
-stream is expected to close immediately after receipt of the trailers block.
-
-If these conditions are not met upon receipt of a Delete instruction, a decoder
-MUST wait to emit a Delete-Ack instruction until the outstanding streams have
-reached an appropriate state.
-
-Note that a decoder MAY condense the list of specified streams by increasing the
-Horizon value and discarding those explicitly-listed stream IDs which are less
-than the new Horizon it has chosen.  This delays delete completion, but reduces
-the amount of state to be tracked by the decoder without changing the
-correctness of the requirements above.
-
-### Delete-Ack {#delete-ack}
-
-Confirmation that a delete has completed is expressed by an instruction which
-starts with the '01' two-bit pattern, followed by the index of the affected
-dynamic table entry represented as an integer with a 6-bit prefix.
-
-Note that unlike all other instructions, this instruction refers to the
-receiver's dynamic table, not the sender's.
-
-~~~~~~~~~~
-     0   1   2   3   4   5   6   7
-   +---+---+---+---+---+---+---+---+
-   | 0 | 1 |      Index (6+)       |
-   +---+---+-----------------------+
-~~~~~~~~~~
-{: title="Delete-Ack Instruction"}
-
-This instruction MUST NOT be sent before the conditions described in
-{{delete-validation}} have been satisfied, and SHOULD be sent as soon as
-possible once they are.
-
-## Format of Encoded Headers on Message Streams
+## Request Streams
 
 Frames which carry HTTP message headers encode them using the following
 instructions:
@@ -487,8 +505,9 @@ entail the following changes:
   PUSH_PROMISE frames (Section 5.2.6).
 - Header Block Fragments consist of QPACK data instead of HPACK data.
 - Just as unidirectional push streams have a stream header identifying their
-  type and Push ID, a header will need to be added to differentiate header table
-  update streams from requests and pushes.
+  Push ID, a header will need to be added to differentiate checkpoint streams
+  from pushes.
+- Stream 2 is reserved for the Feedback Stream
 
 A HEADERS or PUSH_PROMISE frame MAY contain an arbitrary number of QPACK
 instructions, but QPACK instructions SHOULD NOT cross a boundary between
@@ -537,45 +556,21 @@ head-of-line blocking within these messages.
 
 ## Timely Delete Completion versus State Commitment
 
-Anything which prevent deletes from completing can prevent the encoder from
+Anything which prevent checkpoints from expiring can prevent the encoder from
 adding any new entries due to the maximum table size. This does not block the
 encoder from continuing to make requests, but could sharply limit compression
-performance. Encoders would be well-served to delete entries in advance of
-encountering the table maximum. Decoders SHOULD be prompt about emitting
-Delete-Ack instructions to enable the encoder to recover the table space.
-
-The encoder can enable deletes to complete more quickly by maintaining a
-complete history of which streams have referenced any given table entry and
-providing this list as part of the delete instruction.  The encoder can also
-choose to maintain less state by advancing the Horizon value (see
-{{stream-id-list}}).  This value indicates the starting point of the provided
-history, and can be advanced arbitrarily far to discard history.  This comes at
-the potential cost of a decoder taking longer to acknowledge that entries have
-been removed, but this cost is zero if all previous requests are known to have
-completed.  Therefore, this history can be pruned without performance impact by
-removing entries where all data is known to have been successfully delivered and
-interpreted, if some transport coordination is employed.
-
-An encoder which chooses to maintain no history would simply supply a Horizon
-value of a stream which has not yet been used, meaning that deletes cannot
-complete until all currently-active requests have completed.
-
-A decoder can perform the same trade-off in the event the encoder's supplied
-history is more state than it wishes to track.
+performance. Encoders would be well-served to begin moving checkpoint to DYING
+in advance of encountering the table maximum. Decoders SHOULD be prompt about
+emitting STREAM_DONE and ACK_DROP instructions to enable the encoder to recover
+the table space.
 
 
 # Security Considerations
 
 A malicious encoder might attempt to consume a large amount of space on the
-decoder by opening the maximum number of streams, adding entries to the table,
-then sending delete instructions enumerating many streams in a Stream ID List.
+decoder, but as each decoder chooses how much memory to allow the peer to consume,
+this state is bounded.
 
-To guard against such attacks, a decoder SHOULD bound its state tracking by
-generalizing the list of streams to be tracked.  This is most easily achieved by
-advancing the Horizon to a later value and discarding explicit Stream IDs to
-track, but can also be accomplished by eliding explicit streams in ranges.  This
-does not cause any loss of consistency for deletes, but could delay completion
-and reduce performance if done aggressively.
 
 # IANA Considerations
 

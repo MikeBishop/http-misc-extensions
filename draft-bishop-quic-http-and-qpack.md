@@ -676,6 +676,7 @@ gleefully stolen from:
   - Martin Thomson
   - Charles 'Buck' Krasic
   - Kyle Rose
+  - Alan Frindell
 
 A substantial portion of Mike's work on this draft was supported by Microsoft
 during his employment there.

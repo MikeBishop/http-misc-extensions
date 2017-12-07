@@ -531,12 +531,10 @@ HTTP/QUIC [I-D.ietf-quic-http] currently retains the HPACK encoder/decoder from
 HTTP/2, using a Sequence number to enforce ordering. Using QPACK instead would
 entail the following changes:
 
-- The Sequence field is removed from HEADERS frames (Section 5.2.2) and
-  PUSH_PROMISE frames (Section 5.2.6).
-- Header Block Fragments consist of QPACK data instead of HPACK data.
+- Header Blocks consist of QPACK data instead of HPACK data
 - Just as unidirectional push streams have a stream header identifying their
   Push ID, a header will need to be added to differentiate checkpoint streams
-  from pushes.
+  from pushes
 - Stream 2 is reserved for the Feedback Stream
 
 A HEADERS or PUSH_PROMISE frame MAY contain an arbitrary number of QPACK

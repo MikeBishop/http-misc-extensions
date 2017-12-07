@@ -68,10 +68,11 @@ has been reset, and may discard data which has not yet been delivered to the
 application.
 
 Early versions of QPACK were small deltas of HPACK to introduce
-order-resiliency. This version departs from HPACK more substantially to add
-resilience against reset message streams.
+order-resiliency. Recent versions depart from HPACK more substantially to add
+resilience against reset message streams and reduce the impact of head-of-line
+blocking.
 
-In the following sections, this document proposes a new version of HPACK which
+In the following sections, this document proposes a successor to HPACK which
 makes different trade-offs, enabling partial out-of-order interpretation and
 bounded memory consumption with minimal head-of-line blocking. None of the
 proposed improvements to HPACK (strongly-typed fields, binary compression of
@@ -98,8 +99,8 @@ sequence of coded bytes.  QPACK bifurcates these into three channels:
 Because the per-message instructions introduce no changes to the header table
 state, no state is lost if these instructions are discarded due to a stream
 reset.  Because the updates to the header table supply their own order controls
-(the delete logic), they can be processed in any order and therefore delivered
-as messages using unidirectional QUIC streams.
+(the checkpoint logic), they can be processed in any order and therefore
+delivered as messages using unidirectional QUIC streams.
 
 ## Changes to Static and Dynamic Tables
 
@@ -112,11 +113,11 @@ numbers between 1 and 2^27. Each insert instruction will specify the index being
 modified. While any index MAY be chosen for a new entry, smaller numbers will
 yield better compression performance.
 
-Because it is possible for QPACK frames to arrive which reference indices which
-have not yet been defined, such frames MUST wait until another frame has
-arrived and defined the index. In order to guard against malicious peers,
-implementations SHOULD impose a time limit and treat expiration of the timer as
-a decoding error.
+With decoder consent (see {{setting-block}}), it is possible for QPACK
+instructions to arrive which reference indices which have not yet been defined.
+Such instructions MUST wait until the index definition has arrived. In order to
+guard against malicious peers, implementations supporting blocking SHOULD impose
+a time limit and treat expiration of the timer as a decoding error.
 
 ### Dynamic Table State Synchronization {#checkpoints}
 
@@ -141,28 +142,38 @@ arrive; it is not necessary (and might not be desirable) to wait for all
 instructions associated with a checkpoint to arrive before beginning to process
 it.
 
-The encoder typically has at least one checkpoint in the NEW state.  Flushing a
-checkpoint is a two-step operation.  First, the checkpoint's management stream
-is closed. At that time, the encoder's NEW checkpoint becomes PENDING.  The
-decoder moves its NEW checkpoint directly to LIVE and responds with an ACK_FLUSH
-message on the feedback stream.  When the encoder receives this message, its
-PENDING checkpoint becomes LIVE.
+The feedback stream is used to relay state transitions to the peer. For example,
+when a decoder is done processing a header block, it signals this using the
+HEADERS_DONE message.  The encoder uses this information to track which
+checkpoints can be dropped.
+
+#### Checkpoint Lifecycle
+
+A checkpoint is created by opening a new checkpoint stream.  This places the
+checkpoint in the NEW state for both encoder and decoder.  The encoder typically
+has at least one checkpoint in the NEW state.
+
+Flushing a checkpoint is a two-step operation.  First, the checkpoint stream is
+closed. At that time, the encoder's NEW checkpoint becomes PENDING.  The decoder
+moves its NEW checkpoint directly to LIVE and responds with an ACK_FLUSH message
+on the feedback stream.  When the encoder receives this message, its PENDING
+checkpoint becomes LIVE.
 
 Unused entries are evicted indirectly, by dropping checkpoints. Before a
 checkpoint can be dropped, its state is changed to DYING.  Changing a
-checkpoint's state to DYING allows the checkpoint to age out.  The encoder can
-change a DYING checkpoint to DEAD (sending a DROP instruction) when it is no
-longer referenced by any outstanding header blocks, and remove it once the drop
-has been acknowledged by an ACK_DROP message.
+checkpoint's state to DYING allows the checkpoint to age out.  This is a
+strictly internal state on the encoder, and not visible to the decoder. A DYING
+checkpoint can be returned to LIVE at the encoder's discretion if necessary.
 
-The feedback stream is used to notify the encoder that the peer is done decoding
-HTTP headers for a stream using the HEADERS_DONE message.  The encoder uses this
-information to track which checkpoints can be dropped.
+The encoder can change a DYING checkpoint to DEAD (sending a DROP instruction)
+when it is no longer referenced by any outstanding header blocks. The encoder
+sends the DROP command to the decoder when it declares a checkpoint DEAD; the
+decoder drops the corresponding checkpoint and responds with an ACK_DROP
+message.  The encoder drops the DEAD checkpoint upon receipt of the ACK_DROP
+message.
 
-The encoder sends the DROP command to the decoder when it drops a checkpoint;
-the decoder responds with an ACK_DROP message.  When a checkpoint is dropped,
-the table entries it references are checked: if an entry is no longer referenced
-by any checkpoint, the entry is evicted.
+When a checkpoint is dropped, the table entries it references are checked: if an
+entry is no longer referenced by any checkpoint, the entry is evicted.
 
 Dropping a checkpoint and the entries associated with it is not limited to just
 the oldest checkpoint; any DYING checkpoint -- as long as state transition rules
@@ -188,12 +199,12 @@ If a decoder receives a reference to an empty slot in the dynamic table but has
 not sent `SETTING_QPACK_BLOCKING_PERMITTED`, this MUST be treated as:
 
 - A stream error of type `ERROR_QPACK_INVALID_REFERENCE` if on a request stream
-- A connection error of type `ERROR_INVALID_REFERENCE` if on a checkpoint stream
+- A connection error of type `ERROR_QPACK_INVALID_REFERENCE` if on a checkpoint
+  stream
 
-Since DYING is a purely internal state to the encoder, a DYING checkpoint can be
-returned to LIVE with no peer-visible change.  Thus, references to DYING
-checkpoints are possible, but usually inadvisable.  Table entries contained only
-in a DEAD checkpoint can never be referenced.
+References to DYING checkpoints are possible by returning the checkpoint to
+LIVE, but this is usually inadvisable.  Table entries contained only in a DEAD
+checkpoint can never be referenced.
 
 ### Header Table Size
 
@@ -599,15 +610,20 @@ Implementations SHOULD limit the size of table update messages to avoid
 head-of-line blocking within these messages.
 
 
-## Timely Delete Completion versus State Commitment
+## Timely State Transitions versus Decoder Complexity
 
-Anything which prevent checkpoints from expiring can prevent the encoder from
-adding any new entries due to the maximum table size. This does not block the
-encoder from continuing to make requests, but could sharply limit compression
-performance. Encoders would be well-served to begin moving checkpoint to DYING
-in advance of encountering the table maximum. Decoders SHOULD be prompt about
-emitting STREAM_DONE and ACK_DROP instructions to enable the encoder to recover
-the table space.
+Anything which prevent checkpoints from transitioning from DYING to DEAD can
+prevent the encoder from adding any new entries due to the maximum table size.
+This does not block the encoder from continuing to make requests, but could
+sharply limit compression performance. Encoders would be well-served to begin
+moving checkpoint to DYING in advance of encountering the table maximum.
+Decoders SHOULD be prompt about emitting STREAM_DONE and ACK_DROP instructions
+to enable the encoder to recover the table space.
+
+Similarly, for decoders which prohibit blocking references, delaying the
+transition of a checkpoint from PENDING to LIVE will degrade compression
+performance.  Decoders SHOULD consume checkpoint data and emit ACK_FLUSH frames
+as promptly as possible.
 
 
 # Security Considerations

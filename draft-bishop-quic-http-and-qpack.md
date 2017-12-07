@@ -666,8 +666,10 @@ Specification:
 
 # Acknowledgements {#ack}
 
-This draft draws heavily on the text of [RFC7541]. The indirect input of those
-authors is gratefully acknowledged, as well as ideas gleefully stolen from:
+This draft draws heavily on the text of [RFC7541], and adopts (with adaptation)
+the checkpoint model from {{?QMIN=I-D.tikhonov-quic-qmin}}. The direct and
+indirect input of those authors is gratefully acknowledged, as well as ideas
+gleefully stolen from:
 
   - Jana Iyengar
   - Patrick McManus

@@ -167,13 +167,16 @@ checkpoint can be returned to LIVE at the encoder's discretion if necessary.
 
 The encoder can change a DYING checkpoint to DEAD (sending a DROP instruction)
 when it is no longer referenced by any outstanding header blocks. The encoder
-sends the DROP command to the decoder when it declares a checkpoint DEAD; the
-decoder drops the corresponding checkpoint and responds with an ACK_DROP
-message.  The encoder drops the DEAD checkpoint upon receipt of the ACK_DROP
-message.
+sends the DROP command to the decoder when it declares a checkpoint DEAD.
 
-When a checkpoint is dropped, the table entries it references are checked: if an
-entry is no longer referenced by any checkpoint, the entry is evicted.
+To ensure consistency, the decoder drops the corresponding checkpoint and
+responds with an ACK_DROP message only when it has fully received all
+instructions the encoder has issued up to that point.  The encoder drops the
+DEAD checkpoint upon receipt of the ACK_DROP message.
+
+When a checkpoint is dropped by encoder or decoder, the table entries it
+references are checked: if an entry is no longer referenced by any checkpoint,
+the entry is evicted.
 
 Dropping a checkpoint and the entries associated with it is not limited to just
 the oldest checkpoint; any DYING checkpoint -- as long as state transition rules
@@ -311,15 +314,22 @@ to LIVE on the encoder.
 When an encoder has received sufficient HEADERS_DONE messages to know that a
 DYING checkpoint has no outstanding references, it emits a DROP instruction
 to inform the decoder that the checkpoint can be removed.  Upon sending a DROP
-instruction, a DYING checkpoint becomes DEAD.  Upon receiving a DROP instruction,
-a LIVE checkpoint is removed from the decoder state and an ACK_DROP instruction
-is emitted.
+instruction, a DYING checkpoint becomes DEAD.  The DROP instruction also includes
+the ID of the encoder's greatest checkpoint ID so far.
+
+Upon receiving a DROP instruction, if all checkpoints up to and including the
+Most Recent ID have been fully processed (transitioned from NEW to LIVE), the
+identified LIVE checkpoint is removed from the decoder state and an ACK_DROP
+instruction is emitted.  Otherwise, the decoder saves the DROP instruction until
+other checkpoints become LIVE.
 
 ~~~~~~~~~~
   0   1   2   3   4   5   6   7
 +---+---+---+---+---+---+---+---+
 | 0 | 1 | 0 | Checkpoint ID (5+)|
-+---+---------------------------+
++---+---+---+-------------------+
+|      Most Recent ID (8+)      |
++-------------------------------+
 ~~~~~~~~~~
 {: title="DROP instruction"}
 
@@ -336,7 +346,7 @@ checkpoint.
   0   1   2   3   4   5   6   7
 +---+---+---+---+---+---+---+---+
 | 0 | 1 | 1 | Checkpoint ID (5+)|
-+---+---------------------------+
++---+---+---+-------------------+
 ~~~~~~~~~~
 {: title="ACK_DROP instruction"}
 
@@ -356,7 +366,8 @@ nature of the stream content; the identifier for QPACK checkpoints is 0x4B.
 
 Following the stream header, a checkpoint stream contains its checkpoint ID as
 an 8-bit prefix integer. The remainder of the stream's data consists of the
-instructions defined in this section.
+instructions defined in this section.  Checkpoint IDs begin at zero and
+increment by one for each new checkpoint.
 
 Data on checkpoint streams SHOULD be processed as soon as it arrives.
 If multiple checkpoint streams are received at once, a decoder SHOULD process
@@ -385,7 +396,7 @@ entry are referenced by the NEW checkpoint.
      0   1   2   3   4   5   6   7
    +---+---+---+---+---+---+---+---+
    | 1 |       New Index (7+)      |
-   +---+---+-----------------------+
+   +---+---------------------------+
    | S |       Name Index (7+)     |
    +---+---------------------------+
    | H |     Value Length (7+)     |
@@ -403,9 +414,9 @@ by the header field name.
      0   1   2   3   4   5   6   7
    +---+---+---+---+---+---+---+---+
    | 1 |       New Index (7+)      |
-   +---+---+-----------------------+
+   +---+---------------------------+
    |               0               |
-   +---+---+-----------------------+
+   +---+---------------------------+
    | H |     Name Length (7+)      |
    +---+---------------------------+
    |  Name String (Length octets)  |
@@ -457,7 +468,7 @@ decoded header list, as described in Section 3.2 of [RFC7541].
   0   1   2   3   4   5   6   7
 +---+---+---+---+---+---+---+---+
 | 1 | S |      Index (6+)       |
-+---+---------------------------+
++---+---+-----------------------+
 ~~~~~~~~~~
 {: title="Indexed Header Field"}
 
@@ -494,7 +505,7 @@ entry is represented as an integer with an 5-bit prefix (see Section 5.1 of
      0   1   2   3   4   5   6   7
    +---+---+---+---+---+---+---+---+
    | 0 | N | S |  Name Index (5+)  |
-   +---+---+-----------------------+
+   +---+---+---+-------------------+
    | H |     Value Length (7+)     |
    +---+---------------------------+
    | Value String (Length octets)  |

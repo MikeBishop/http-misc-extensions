@@ -613,10 +613,10 @@ an encoder MAY also proactively insert header values which it believes will be
 needed on future requests, at the cost of reduced compression efficiency for
 incorrect predictions.
 
-The ability to split updates to the header table into discrete messages reduces
-the possibility for head-of-line blocking within the table update streams.
-Implementations SHOULD limit the size of table update messages to avoid
-head-of-line blocking within these messages.
+The ability to split updates to the header table into discrete checkpoints
+reduces the possibility for head-of-line blocking within the checkpoint streams.
+Implementations SHOULD limit the size of checkpoints to avoid head-of-line
+blocking within these messages.
 
 
 ## Timely State Transitions versus Decoder Complexity
@@ -634,12 +634,23 @@ transition of a checkpoint from PENDING to LIVE will degrade compression
 performance.  Decoders SHOULD consume checkpoint data and emit ACK_FLUSH frames
 as promptly as possible.
 
+Since decoders cannot safely drop old checkpoints until they have fully
+processed any checkpoints which might have been open concurrently, a long-lived
+checkpoint can delay the completion of an ACK_DROP.  Encoders SHOULD flush all
+NEW checkpoints as soon as feasible after issuing a DROP instruction.
+
 
 # Security Considerations
 
 A malicious encoder might attempt to consume a large amount of space on the
 decoder, but as each decoder chooses how much memory to allow the peer to consume,
 this state is bounded.
+
+A malicious encoder might also send blocking references to entries which will
+never actually be defined.  This attack is comparable to a "slow loris" attack
+in which a request is delivered very slowly in an attempt to consume resources
+on the server.  Similar mitigations (request timers, etc.) SHOULD be employed
+to guard against such attacks.
 
 
 # IANA Considerations

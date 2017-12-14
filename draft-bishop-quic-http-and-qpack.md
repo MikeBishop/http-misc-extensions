@@ -455,8 +455,28 @@ decoder MUST treat is as an error.
 
 ## Request Streams
 
-Frames which carry HTTP message headers encode them using the following
-instructions:
+Frames which carry HTTP message headers begin with a preface indicating the
+QPACK state which is necessary to decode the frame without blocking. This header
+indicates one or more checkpoints on which the request depends; if these
+checkpoints are not LIVE, it MAY avoid reading the remainder of the frame until
+they are.  (If any of these checkpoints have already been dropped, this must be
+treated as a stream error of type ERROR_QPACK_INVALID_REFERENCE.)
+
+The preface is formatted as follows:
+~~~~~~~~~~
+     0   1   2   3   4   5   6   7
+   +---+---+---+---+---+---+---+---+
+   | L |      Checkpoint (7+)      |
+   +---+---+---+-------------------+
+   | L |      Checkpoint (7+)      |
+   +---+---------------------------+
+   |              ...              |
+   +-------------------------------+
+~~~~~~~~~~
+{: title="QPACK preface"}
+
+The `L` bit indicates that this checkpoint is the last checkpoint in the preface;
+if the bit is unset (0), then another checkpoint follows.
 
 ### Indexed Header Field Representation
 

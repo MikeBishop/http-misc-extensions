@@ -587,10 +587,9 @@ entail the following changes:
 - Stream 2 is reserved for the Feedback Stream
 
 A HEADERS or PUSH_PROMISE frame MAY contain an arbitrary number of QPACK
-instructions, but QPACK instructions SHOULD NOT cross a boundary between
-successive HEADERS frames.  A partial HEADERS or PUSH_PROMISE frame MAY be
-processed upon arrival and the resulting partial header set emitted or buffered
-according to implementation requirements.
+instructions.  A partial HEADERS or PUSH_PROMISE frame MAY be processed upon
+arrival and the resulting partial header set emitted or buffered according to
+implementation requirements.
 
 ## SETTING_QPACK_BLOCKING_PERMITTED {#setting-block}
 

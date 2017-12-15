@@ -365,7 +365,10 @@ nature of the stream content; the identifier for QPACK checkpoints is 0x4B.
 > but has manifested in several PRs, and would need to be resurrected.
 
 Following the stream header, a checkpoint stream contains its checkpoint ID as
-an 8-bit prefix integer. The remainder of the stream's data consists of the
+an 8-bit prefix integer and a list of checkpoints on which this checkpoint depends.
+
+
+. The remainder of the stream's data consists of the
 instructions defined in this section.  Checkpoint IDs begin at zero and
 increment by one for each new checkpoint.
 
@@ -583,9 +586,16 @@ references might cause the processing of request streams or other checkpoint
 streams to block, waiting for the arrival of missing data.
 
 If the decoder permits the encoder to make blocking references, it sets
-`SETTING_QPACK_BLOCKING_PERMITTED` (0xSETTING-TBD1) to true.  In the default
-setting, false, the encoder MUST NOT encode a header using a format that might
-block.
+`SETTING_QPACK_BLOCKING_PERMITTED` (0xSETTING-TBD1) to a non-zero value. The
+encoder receiving this setting MAY encode up to this number of
+potentially-blocking references at a time.
+
+Sending this setting with no value indicates that a decoder is willing to
+tolerate blocking references bounded only by the allowed number of streams. If a
+decoder does not send this setting, the encoder MUST NOT encode a header using a
+reference that might block.
+
+
 
 ## SETTING_QPACK_INITIAL_CHECKPOINT {#setting-initial}
 

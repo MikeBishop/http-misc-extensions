@@ -315,20 +315,27 @@ When an encoder has received sufficient HEADERS_DONE messages to know that a
 DYING checkpoint has no outstanding references, it emits a DROP instruction
 to inform the decoder that the checkpoint can be removed.  Upon sending a DROP
 instruction, a DYING checkpoint becomes DEAD.  The DROP instruction also includes
-the ID of the encoder's greatest checkpoint ID so far.
+the IDs of any PENDING or NEW checkpoints which reference entries contained in
+the checkpoint being dropped. The `L` bit in each byte indicates whether
+another checkpoint ID follows (L=0) or this is the final byte of the DROP
+instruction (L=1).
 
-Upon receiving a DROP instruction, if all checkpoints up to and including the
-Most Recent ID have been fully processed (transitioned from NEW to LIVE), the
-identified LIVE checkpoint is removed from the decoder state and an ACK_DROP
-instruction is emitted.  Otherwise, the decoder saves the DROP instruction until
-other checkpoints become LIVE.
+Upon receiving a DROP instruction, if all listed checkpoints have been fully
+processed (transitioned from NEW to LIVE), the identified LIVE checkpoint is
+immediately removed from the decoder state and an ACK_DROP instruction is
+emitted.  Otherwise, the decoder saves the DROP instruction until other
+checkpoints become LIVE.
 
 ~~~~~~~~~~
   0   1   2   3   4   5   6   7
 +---+---+---+---+---+---+---+---+
-| 0 | 1 | 0 | Checkpoint ID (5+)|
+| 0 | 0 | L | Checkpoint ID (5+)|
 +---+---+---+-------------------+
-|      Most Recent ID (8+)      |
+| L |      Checkpoint (7+)      |
++---+---------------------------+
+| L |      Checkpoint (7+)      |
++---+---------------------------+
+|              ...              |
 +-------------------------------+
 ~~~~~~~~~~
 {: title="DROP instruction"}
@@ -354,6 +361,10 @@ checkpoint.
 ## Checkpoint Streams
 
 Each checkpoint stream indicates the creation and content of a NEW checkpoint.
+Each checkpoint has an ID; these IDs are chosen arbitrarily by the encoder,
+though lower values SHOULD be preferred.  IDs of checkpoints which have been
+dropped MAY be reused for future NEW checkpoints.
+
 When the encoder has finished writing all data on the stream, it changes the
 checkpoint to PENDING.  When the decoder has received and processed all data on
 the stream, it changes the checkpoint to LIVE and generates an ACK_FLUSH.
@@ -366,8 +377,7 @@ nature of the stream content; the identifier for QPACK checkpoints is 0x4B.
 
 Following the stream header, a checkpoint stream contains its checkpoint ID as
 an 8-bit prefix integer. The remainder of the stream's data consists of the
-instructions defined in this section.  Checkpoint IDs begin at zero and
-increment by one for each new checkpoint.
+instructions defined in this section.
 
 Data on checkpoint streams SHOULD be processed as soon as it arrives.
 If multiple checkpoint streams are received at once, a decoder SHOULD process
@@ -390,7 +400,10 @@ entry is represented as an integer with an 7-bit prefix (see Section 5.1 of
 
 If an INSERT instruction uses an existing dynamic table entry for the name of an
 entry being added to the NEW checkpoint, both the existing entry and the new
-entry are referenced by the NEW checkpoint.
+entry are referenced by the NEW checkpoint.  INSERT instructions which reference
+the dynamic table MUST reference only entries which are already included in a
+LIVE checkpoint.  This avoids the possibility of one checkpoint stream blocking
+on a different checkpoint.
 
 ~~~~~~~~~~
      0   1   2   3   4   5   6   7
@@ -432,8 +445,8 @@ Either form of header field name representation is followed by the header field
 value represented as a string literal (see Section 5.2 of [RFC7541]).
 
 An encoder MUST NOT attempt to place a value at an index not known to be vacant.
-A decoder MUST treat the attempt to insert into an occupied slot as a fatal
-error.
+A decoder MUST treat the attempt to insert into an occupied slot or reference a
+name in a vacant slot as a fatal error.
 
 ### TOUCH
 
@@ -455,8 +468,29 @@ decoder MUST treat is as an error.
 
 ## Request Streams
 
-Frames which carry HTTP message headers encode them using the following
-instructions:
+Frames which carry HTTP message headers begin with a preface indicating the
+QPACK state which is necessary to decode the frame without blocking. This header
+indicates one or more checkpoints on which the request depends; if these
+checkpoints are not LIVE, it MAY avoid reading the remainder of the frame until
+they are.  (If any of these checkpoints have already been dropped, this must be
+treated as a stream error of type ERROR_QPACK_INVALID_REFERENCE.)
+
+The preface is formatted as follows:
+
+~~~~~~~~~~
+     0   1   2   3   4   5   6   7
+   +---+---+---+---+---+---+---+---+
+   | L |      Checkpoint (7+)      |
+   +---+---+---+-------------------+
+   | L |      Checkpoint (7+)      |
+   +---+---------------------------+
+   |              ...              |
+   +-------------------------------+
+~~~~~~~~~~
+{: title="QPACK preface"}
+
+The `L` bit indicates that this checkpoint is the last checkpoint in the preface;
+if the bit is unset (0), then another checkpoint follows.
 
 ### Indexed Header Field Representation
 
@@ -559,13 +593,20 @@ according to implementation requirements.
 An HTTP/QUIC implementation can trade off the complexity of its QPACK decoder
 against compression efficiency by permitting the peer's compressor to reference
 unacknowledged entries.  In the case of loss on a checkpoint stream, such
-references might cause the processing of request streams or other checkpoint
-streams to block, waiting for the arrival of missing data.
+references might cause the processing of request streams to block, waiting for
+the arrival of missing data.
 
 If the decoder permits the encoder to make blocking references, it sets
-`SETTING_QPACK_BLOCKING_PERMITTED` (0xSETTING-TBD1) to true.  In the default
-setting, false, the encoder MUST NOT encode a header using a format that might
-block.
+`SETTING_QPACK_BLOCKING_PERMITTED` (0xSETTING-TBD1) to a non-zero value. The
+encoder receiving this setting MAY encode up to this number of
+potentially-blocking references at a time.
+
+Sending this setting with no value indicates that a decoder is willing to
+tolerate blocking references bounded only by the allowed number of streams. If a
+decoder does not send this setting or sends this setting with a value of zero,
+the encoder MUST NOT encode a header using a reference that might block.
+
+
 
 ## SETTING_QPACK_INITIAL_CHECKPOINT {#setting-initial}
 

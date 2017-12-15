@@ -575,8 +575,8 @@ value represented as a string literal (see Section 5.2 of [RFC7541]).
 # Use in HTTP/QUIC
 
 HTTP/QUIC [I-D.ietf-quic-http] currently retains the HPACK encoder/decoder from
-HTTP/2, using a Sequence number to enforce ordering. Using QPACK instead would
-entail the following changes:
+HTTP/2, but restricts the size of the dynamic table to zero. Using QPACK instead
+would entail the following changes:
 
 - Header Blocks consist of QPACK data instead of HPACK data
 - HEADERS and PUSH_PROMISE frames define a flag indicating the presence of

@@ -192,18 +192,16 @@ effectively.
 
 ### Permitted References
 
-When encoding headers on a request stream or referencing existing entries in a
-checkpoint stream, an encoder MAY reference any static table entry or any
-dynamic header table entry referenced by a LIVE checkpoint.  References to
-entries in NEW or PENDING checkpoints are permitted only if the client has set
-`SETTING_QPACK_BLOCKING_PERMITTED` (see {{setting-block}}).
+When encoding headers on a request stream, an encoder MAY reference any static
+table entry or any dynamic header table entry referenced by a LIVE checkpoint.
+References to entries in NEW or PENDING checkpoints are permitted only if the
+client has set `SETTING_QPACK_BLOCKING_PERMITTED` (see {{setting-block}}).
 
 If a decoder receives a reference to an empty slot in the dynamic table but has
-not sent `SETTING_QPACK_BLOCKING_PERMITTED`, this MUST be treated as:
-
-- A stream error of type `ERROR_QPACK_INVALID_REFERENCE` if on a request stream
-- A connection error of type `ERROR_QPACK_INVALID_REFERENCE` if on a checkpoint
-  stream
+not sent `SETTING_QPACK_BLOCKING_PERMITTED`, this MUST be treated as a stream
+error of type `ERROR_QPACK_INVALID_REFERENCE` if on a request stream. References
+to empty slots in the dynamic table on a checkpoint stream MUST be treated as a
+connection error of type `ERROR_QPACK_INVALID_REFERENCE`.
 
 References to DYING checkpoints are possible by returning the checkpoint to
 LIVE, but this is usually inadvisable.  Table entries contained only in a DEAD

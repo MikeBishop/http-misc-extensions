@@ -468,12 +468,14 @@ decoder MUST treat is as an error.
 
 ## Request Streams
 
-Frames which carry HTTP message headers begin with a preface indicating the
-QPACK state which is necessary to decode the frame without blocking. This header
-indicates one or more checkpoints on which the request depends; if these
-checkpoints are not LIVE, it MAY avoid reading the remainder of the frame until
-they are.  (If any of these checkpoints have already been dropped, this must be
-treated as a stream error of type ERROR_QPACK_INVALID_REFERENCE.)
+Frames which carry HTTP message headers begin with an optional preface
+indicating potentially-blocking references in the frame. If present, this
+preface indicates that the request depends on one or more checkpoints which were
+NEW or PENDING for the encoder when the frame was generated.  If these
+checkpoints are not LIVE on the decoder, it MAY delay reading the remainder of
+the frame until they are.  (If any of these checkpoints have already been
+dropped, this must be treated as a stream error of type
+ERROR_QPACK_INVALID_REFERENCE.)
 
 The preface is formatted as follows:
 
@@ -577,6 +579,8 @@ HTTP/2, using a Sequence number to enforce ordering. Using QPACK instead would
 entail the following changes:
 
 - Header Blocks consist of QPACK data instead of HPACK data
+- HEADERS and PUSH_PROMISE frames define a flag indicating the presence of
+  a preface.
 - Just as unidirectional push streams have a stream header identifying their
   Push ID, a header will need to be added to differentiate checkpoint streams
   from pushes

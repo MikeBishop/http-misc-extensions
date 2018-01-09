@@ -26,15 +26,14 @@ informative:
 
 --- abstract
 
-HTTP Alternative Services {{!AltSvc=RFC7838}} provides a mechanism for an origin
-to declare that its content is accessible via some other combination of host,
-port, and protocol.  In the process of using such an alternative, an observer
-can identify that the client is requesting resources from a particular hostname.
+HTTP Alternative Services provides a mechanism for an origin to declare that its
+content is accessible via some other combination of host, port, and protocol.
+In the process of using such an alternative, an observer can identify that the
+client is requesting resources from a particular hostname.
 
 This document extends HTTP Alternative Services, in combination with Secondary
-Certificate Authentication
-({{!SecondaryCerts=I-D.bishop-httpbis-http2-additional-certs}}), to enable
-clients not to disclose the origin to which they intend to connect.
+Certificate Authentication, to enable clients not to disclose the origin to
+which they intend to connect.
 
 --- middle
 
@@ -63,13 +62,13 @@ document provides a mechanism to address both limitations.
 
 ## Usage
 
-In {{!AltSvc}}, once a client has received a validated Alternative Service
-record for an origin, it "SHOULD use that alternative service for all requests
-to the associated origin as soon as it is available, provided the alternative
-service information is fresh (Section 2.2) and the security properties of the
-alternative service protocol are desirable, as compared to the existing
-connection." However, the client "MUST have reasonable assurances that the
-alternative service is under control of and valid for the whole origin ...
+In {{!AltSvc=RFC7838}}, once a client has received a validated Alternative
+Service record for an origin, it "SHOULD use that alternative service for all
+requests to the associated origin as soon as it is available, provided the
+alternative service information is fresh (Section 2.2) and the security
+properties of the alternative service protocol are desirable, as compared to the
+existing connection." However, the client "MUST have reasonable assurances that
+the alternative service is under control of and valid for the whole origin ...
 established through use of a TLS-based protocol with the certificate checks
 defined in {{!RFC2818}}."  This causes the origin to be disclosed in the SNI
 extension while connecting to the alternative, and the origin's certificate to
@@ -78,8 +77,9 @@ directly to the origin.
 
 The extension described in {{extension}} enables an origin to declare that
 reasonable assurances should be obtained, not by requesting the desired hostname
-in the TLS handshake, but by requesting it via {{!SecondaryCerts}}.  The
-validation checks from {{!RFC2818}} are applied to this certificate.
+in the TLS handshake, but by requesting it via
+{{!SecondaryCerts=I-D.bishop-httpbis-http2-additional-certs}}.  The validation
+checks from {{!RFC2818}} are applied to this certificate.
 
 Because the entire exchange happens inside TLS, a passive observer cannot
 identify the hostname(s) the client might be requesting.

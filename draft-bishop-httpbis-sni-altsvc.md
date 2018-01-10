@@ -127,6 +127,91 @@ reasonable timeout, or if the server's SETTINGS frame does not include the
 `SETTINGS_HTTP_CERT_AUTH` setting, the client MUST consider the alternative
 connection to have failed.
 
+# Examples
+
+## SNI of Unrelated Domain
+
+Suppose a client has received the following Alt-Svc entry for
+sensitive.example.com in the past:
+
+    h2=":443";ma=2635200;persist=true;sni=innocence.org
+
+If the client now wishes to make a request to
+https://sensitive.example.com/private, it would perform a DNS resolution for
+sensitive.example.com (the Alt-Svc entry does not specify a different hostname).
+The client would then open a TCP connection to the resulting IP address and
+begin a TLS handshake.
+
+In the client's TLS handshake, it would request a certificate for the hostname
+innocence.org.  The TLS server would present such a certificate, which might not
+be issued by an authority trusted by the client.
+
+Because the client is not actually attempting to reach innocence.org, the client
+will perform no validity checks on the provided certificate.  Instead, the
+client will send a `CERTIFICATE_REQUEST` frame asking that the server also
+authenticate with a certificate for sensitive.example.com.
+
+After receiving the `CERTIFICATE` frame proving possession of a certificate for
+sensitive.example.com, the client will verify that this certificate is trusted.
+If so, the client will proceed to send HTTP/2 requests to the server requesting
+the resource https://sensitive.example.com/private.
+
+## Wildcard Subdomains
+
+Suppose a client has received the following Alt-Svc entry for
+sensitive.example.com in the past:
+
+    h2="www.example.com:443";ma=2635200;persist=true;sni=www.example.com
+
+If the client now wishes to make a request to
+https://sensitive.example.com/private, it would perform a DNS resolution for
+www.example.com, the specified alternative. The client would then open a TCP
+connection to the resulting IP address and begin a TLS handshake.
+
+In the client's TLS handshake, it would request a certificate for the hostname
+www.example.com.  The TLS server would present a certificate which included
+www.example.com as one of the covered hostnames.
+
+Suppose that the certificate with which the server authenticated also contained
+a Subject Alternative Name of "*.example.com".  Because the certificate covers
+the desired origin, the client would perform validity checks on this
+certificate.
+
+If the certificate is trusted, the client will proceed to send HTTP/2 requests
+to the server requesting the resource https://sensitive.example.com/private.
+
+## Omitting SNI
+
+Suppose a client has received the following Alt-Svc entry for
+sensitive.example.com in the past:
+
+    h2="alternative.example.com:443";ma=2635200;persist=true;sni=""
+
+If the client now wishes to make a request to
+https://sensitive.example.com/private, it would perform a DNS resolution for
+alternative.example.com, the specified alternative. The client would then open a
+TCP connection to the resulting IP address and begin a TLS handshake.
+
+In the client's TLS handshake, it would omit the Server Name Indication
+extension.  The TLS server would present a certificate according to its
+configured defaults.
+
+If the supplied certificate does cover sensitive.example.com, for example
+because it contained a Subject Alternative Name of "*.example.com", the client
+would perform validity checks on this certificate.
+
+If the supplied certificate does not cover sensitive.example.com, the client
+will perform no authority checks on the provided certificate.  Instead, the
+client will send a `CERTIFICATE_REQUEST` frame asking that the server also
+authenticate with a certificate for sensitive.example.com.  Validity checks will
+be performed on the certificate supplied by the corresponding `CERTIFICATE`
+frame.
+
+In either case, if the validity checks are successful, the client will proceed
+to send HTTP/2 requests to the server requesting the resource
+https://sensitive.example.com/private.
+
+
 # Security Considerations
 
 {{!AltSvc}} permits clients to ignore unrecognized parameters.  As a result,

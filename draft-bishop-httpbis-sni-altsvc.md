@@ -105,15 +105,17 @@ parameter in its alternative service entry.
 
 Syntax:
 
-    sni = host
+    sni = ( host / empty-string )
+    empty-string = DQUOTE DQUOTE
 
 `host` is defined in Section 3.2.2 of {{!RFC3986}}.
 
 When processing such an alternative, clients SHOULD present the hostname given
-in the `sni` parameter in the SNI extension during the TLS handshake.
-If the resulting certificate is also for the origin which published the
-alternative service, the client MUST validate the certificate in the handshake
-for authenticity according to {{!RFC2818}}.
+in the `sni` parameter in the SNI extension during the TLS handshake. If the
+hostname given is an empty string, clients SHOULD omit the SNI extension from
+the TLS handshake.  If the resulting certificate is also for the origin which
+published the alternative service, the client MUST validate the certificate in
+the handshake for authenticity according to {{!RFC2818}}.
 
 Otherwise, the client MAY choose not to validate the certificate, but MUST NOT
 make requests to any origin corresponding to this certificate unless the

@@ -30,11 +30,11 @@ informative:
 
 --- abstract
 
-[RFC7540] defines HTTP/2, including a method for communicating priorities.
-Some implementations have begun using closed streams as placeholders when
+RFC7540 defines HTTP/2, including a method for communicating priorities. Some
+implementations have begun using closed streams as placeholders when
 constructing their priority tree, but this has unbounded state commitments and
-interacts poorly with HTTP/QUIC ([I-D.ietf-quic-http]).  This document proposes
-an extension to the HTTP/2 priority scheme for both protocols.
+interacts poorly with HTTP/QUIC.  This document proposes an extension to the
+HTTP/2 priority scheme for both protocols.
 
 --- middle
 

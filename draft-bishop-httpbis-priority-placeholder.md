@@ -63,7 +63,7 @@ The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD",
 document are to be interpreted as described in BCP 14 {{!RFC2119}} {{!RFC8174}}
 when, and only when, they appear in all capitals, as shown here.
 
-# The Priority Placeholder Extension
+# The Priority Placeholder Extension to HTTP/2
 
 This extension consists of an additional setting {{setting}}, changes to the set
 of HTTP/2 frames {{frames}}, and modified state management logic on the server
@@ -210,6 +210,27 @@ stream.
 
 Clients MUST assume the server is actively performing such pruning and MUST NOT
 declare a dependency on a stream it knows to have been closed.
+
+# Incorporating Placeholders in HTTP/QUIC
+
+HTTP/QUIC {{!HQ=I-D.ietf-quic-http}} uses a different PRIORITY frame which already
+permits selecting either a stream or a Push ID (a new concept in HTTP/QUIC) to be
+prioritized or used as a dependency.  Expanding this frame to support placeholders
+as well requires additional bits.
+
+The PRIORITY frame currently uses two flag bits to indicate Request/Push
+dependencies on Request/Push.  If the full matrix of dependencies is to be
+supported (Request/Push/Placeholder dependent on Request/Push/Placeholder), four
+bits would be required to represent the space, with several invalid flag
+combinations being defined.  (If one combination were eliminated, three
+flags would be sufficient to represent the remaining combinations, but the
+semantics of individual flags would be unclear.)
+
+HTTP/QUIC does not have the implicit closure of streams like HTTP/2.  While
+client implementations could reset streams which they intend to use as priority
+placeholders, there has been interest in creating greater clarity and
+synchronization between the client and server views of the priority tree.
+
 
 # Security Considerations {#security}
 

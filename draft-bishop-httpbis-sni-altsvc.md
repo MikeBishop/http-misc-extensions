@@ -113,13 +113,15 @@ Syntax:
 When processing such an alternative, clients SHOULD present the hostname given
 in the `sni` parameter in the SNI extension during the TLS handshake. If the
 hostname given is an empty string, clients SHOULD omit the SNI extension from
-the TLS handshake.  If the resulting certificate is also for the origin which
-published the alternative service, the client MUST validate the certificate in
-the handshake for authenticity according to {{!RFC2818}}.
+the TLS handshake.  The server MUST return a valid certificate which includes
+either this hostname or the hostname of the origin that published the alternative
+service.  The client MUST validate the certificate in the handshake for authenticity
+according to {{!RFC2818}} and ensure that it is valid for at least one of these
+two names.
 
-Otherwise, the client MAY choose not to validate the certificate, but MUST NOT
-make requests to any origin corresponding to this certificate unless the
-certificate has been successfully validated.  In this case, the client SHOULD
+If the certificate is not valid for the origin's hostname, the client MUST NOT
+make requests to any origin corresponding to this certificate.
+In this case, the client SHOULD
 send a `CERTIFICATE_REQUEST` frame including an SNI extension indicating the
 origin which published the alternative service immediately upon connecting.  If
 no corresponding `CERTIFICATE` frame is presented by the server after a
@@ -129,25 +131,25 @@ connection to have failed.
 
 # Examples
 
-## SNI of Unrelated Domain
+## SNI of Colocated Domain
 
 Suppose a client has received the following Alt-Svc entry for
 sensitive.example.com in the past:
 
-    h2=":443";ma=2635200;persist=true;sni=innocence.org
+    h2="innocence.org:443";ma=2635200;persist=true;sni=innocence.org
 
 If the client now wishes to make a request to
 https://sensitive.example.com/private, it would perform a DNS resolution for
-sensitive.example.com (the Alt-Svc entry does not specify a different hostname).
+innocence.org.
 The client would then open a TCP connection to the resulting IP address and
 begin a TLS handshake.
 
 In the client's TLS handshake, it would request a certificate for the hostname
-innocence.org.  The TLS server would present such a certificate, which might not
-be issued by an authority trusted by the client.
-
-Because the client is not actually attempting to reach innocence.org, the client
-will perform no validity checks on the provided certificate.  Instead, the
+"innocence.org".  The TLS server would present such a certificate,
+issued by an authority trusted by the client. The client will validate the
+certificate for the name "sensitive.example.com".  When validation fails, the
+client will try to validate the certificate for the name "innocence.org", which
+will succeed.  After validation succeeds, the
 client will send a `CERTIFICATE_REQUEST` frame asking that the server also
 authenticate with a certificate for sensitive.example.com.
 
@@ -196,21 +198,31 @@ In the client's TLS handshake, it would omit the Server Name Indication
 extension.  The TLS server would present a certificate according to its
 configured defaults.
 
-If the supplied certificate does cover sensitive.example.com, for example
-because it contained a Subject Alternative Name of "*.example.com", the client
+The server would supply a certificate that covers sensitive.example.com, for example
+because it contains a Subject Alternative Name of "*.example.com", and the client
 would perform validity checks on this certificate.
 
-If the supplied certificate does not cover sensitive.example.com, the client
-will perform no authority checks on the provided certificate.  Instead, the
-client will send a `CERTIFICATE_REQUEST` frame asking that the server also
-authenticate with a certificate for sensitive.example.com.  Validity checks will
-be performed on the certificate supplied by the corresponding `CERTIFICATE`
-frame.
+If the supplied certificate does not cover sensitive.example.com, or is not
+valid, the client will terminate the connection.
 
-In either case, if the validity checks are successful, the client will proceed
-to send HTTP/2 requests to the server requesting the resource
-https://sensitive.example.com/private.
+## SNI of Unrelated Domain
 
+Suppose a client has received the following Alt-Svc entry for
+sensitive.example.com in the past:
+
+    h2=":443";ma=2635200;persist=true;sni=other.example
+
+If the client now wishes to make a request to
+https://sensitive.example.com/private, it would perform a DNS resolution for
+sensitive.example.com (the Alt-Svc entry does not specify a different hostname).
+The client would then open a TCP connection to the resulting IP address and
+begin a TLS handshake.
+
+In the client's TLS handshake, it would request a certificate for the hostname
+"other.example".  The TLS server does not a have a certificate for this hostname,
+but it would return a certificate for sensitive.example.com, issued by an
+authority trusted by the client, and the client will successfully validate the
+certificate for the name "sensitive.example.com".
 
 # Security Considerations
 

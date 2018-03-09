@@ -113,11 +113,16 @@ Syntax:
 When processing such an alternative, clients SHOULD present the hostname given
 in the `sni` parameter in the SNI extension during the TLS handshake. If the
 hostname given is an empty string, clients SHOULD omit the SNI extension from
-the TLS handshake.  The server MUST return a valid certificate which includes
-either this hostname or the hostname of the origin that published the alternative
-service.  The client MUST validate the certificate in the handshake for authenticity
+the TLS handshake.  The server MUST return a valid certificate which covers
+at least one of the following:
+
+- The hostname indicated in the SNI extension
+- The hostname of the origin that published the alternative
+- The hostname used for connecting to the alternative
+
+The client MUST validate the certificate in the handshake for authenticity
 according to {{!RFC2818}} and ensure that it is valid for at least one of these
-two names.
+names.
 
 If the certificate is not valid for the origin's hostname, the client MUST NOT
 make requests to any origin corresponding to this certificate.

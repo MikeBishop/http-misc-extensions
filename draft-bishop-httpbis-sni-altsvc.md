@@ -125,13 +125,12 @@ according to {{!RFC2818}} and ensure that it is valid for at least one of these
 names.
 
 If the certificate is not valid for the origin's hostname, the client MUST NOT
-make requests to any origin corresponding to this certificate.
-In this case, the client SHOULD
-send a `CERTIFICATE_REQUEST` frame including an SNI extension indicating the
-origin which published the alternative service immediately upon connecting.  If
-no corresponding `CERTIFICATE` frame is presented by the server after a
-reasonable timeout, or if the server's SETTINGS frame does not include the
-`SETTINGS_HTTP_CERT_AUTH` setting, the client MUST consider the alternative
+make requests to any origin corresponding to this certificate. In this case, the
+client SHOULD send a `CERTIFICATE_REQUEST` frame including an SNI extension
+indicating the origin which published the alternative service immediately upon
+connecting.  If no corresponding `CERTIFICATE` frame is presented by the server
+after a reasonable timeout, or if the server's SETTINGS frame does not include
+the `SETTINGS_HTTP_CERT_AUTH` setting, the client MUST consider the alternative
 connection to have failed.
 
 # Examples
@@ -145,18 +144,17 @@ sensitive.example.com in the past:
 
 If the client now wishes to make a request to
 https://sensitive.example.com/private, it would perform a DNS resolution for
-innocence.org.
-The client would then open a TCP connection to the resulting IP address and
-begin a TLS handshake.
+innocence.org. The client would then open a TCP connection to the resulting IP
+address and begin a TLS handshake.
 
 In the client's TLS handshake, it would request a certificate for the hostname
-"innocence.org".  The TLS server would present such a certificate,
-issued by an authority trusted by the client. The client will validate the
-certificate for the name "sensitive.example.com".  When validation fails, the
-client will try to validate the certificate for the name "innocence.org", which
-will succeed.  After validation succeeds, the
-client will send a `CERTIFICATE_REQUEST` frame asking that the server also
-authenticate with a certificate for sensitive.example.com.
+"innocence.org".  The TLS server would present such a certificate, issued by an
+authority trusted by the client. The client will validate the certificate for
+the name "sensitive.example.com".  When validation fails, the client will try to
+validate the certificate for the name "innocence.org", which will succeed.
+After validation succeeds, the client will send a `CERTIFICATE_REQUEST` frame
+asking that the server also authenticate with a certificate for
+sensitive.example.com.
 
 After receiving the `CERTIFICATE` frame proving possession of a certificate for
 sensitive.example.com, the client will verify that this certificate is trusted.

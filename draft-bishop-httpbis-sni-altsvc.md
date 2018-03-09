@@ -227,6 +227,11 @@ but it would return a certificate for sensitive.example.com, issued by an
 authority trusted by the client, and the client will successfully validate the
 certificate for the name "sensitive.example.com".
 
+Note that an active attacker could identify this server by sending a Client
+Hello with the same SNI value and observing the certificate the server uses to
+authenticate. The server could mitigate this by authenticating with a
+certificate for other.example.
+
 # Security Considerations
 
 {{!AltSvc}} permits clients to ignore unrecognized parameters.  As a result,
@@ -250,6 +255,13 @@ publicly accessible HTTP resources) enable active observers to build a map of
 fronting servers by collecting Alt-Svc advertisements.  Servers SHOULD CONSIDER
 this trade-off in deciding when and how to make Alt-Svc records available to
 unauthenticated parties.
+
+While concealing information from passive observers is beneficial, low-effort
+active attacks still exist.  If an attacker can collect the actual server
+identity by sending a Client Hello with the same SNI value, the usefulness of
+this technique is limited.  Server deployments SHOULD reserve sensitive domains
+for use with Secondary Certificates or conceal them inside wildcards in order to
+mitigate this.
 
 # IANA Considerations
 

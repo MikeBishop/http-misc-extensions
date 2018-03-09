@@ -122,7 +122,8 @@ at least one of the following:
 
 The client MUST validate the certificate in the handshake for authenticity
 according to {{!RFC2818}} and ensure that it is valid for at least one of these
-names.
+names.  Clients SHOULD NOT accept certificates issued to the IP address of the
+alternative.
 
 If the certificate is not valid for the origin's hostname, the client MUST NOT
 make requests to any origin corresponding to this certificate. In this case, the

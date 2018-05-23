@@ -105,15 +105,14 @@ parameter in its alternative service entry.
 
 Syntax:
 
-    sni = ( host / empty-string )
+    sni = ( reg-name / empty-string )
     empty-string = DQUOTE DQUOTE
 
-`host` is defined in Section 3.2.2 of {{!RFC3986}}.
+`reg-name` is defined in Section 3.2.2 of {{!RFC3986}}.
 
 When processing such an alternative, clients SHOULD present the hostname given
 in the `sni` parameter in the SNI extension during the TLS handshake. If the
-hostname given is an IP literal or an empty string,
-clients SHOULD omit the SNI extension from
+hostname given is an empty string, clients SHOULD omit the SNI extension from
 the TLS handshake.  The server MUST return a valid certificate which covers
 at least one of the following:
 

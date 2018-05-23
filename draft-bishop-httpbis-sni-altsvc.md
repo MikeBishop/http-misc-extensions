@@ -112,7 +112,8 @@ Syntax:
 
 When processing such an alternative, clients SHOULD present the hostname given
 in the `sni` parameter in the SNI extension during the TLS handshake. If the
-hostname given is an empty string, clients SHOULD omit the SNI extension from
+hostname given is an IP literal or an empty string,
+clients SHOULD omit the SNI extension from
 the TLS handshake.  The server MUST return a valid certificate which covers
 at least one of the following:
 
@@ -123,7 +124,7 @@ at least one of the following:
 The client MUST validate the certificate in the handshake for authenticity
 according to {{!RFC2818}} and ensure that it is valid for at least one of these
 names.  Clients SHOULD NOT accept certificates issued to the IP address of the
-alternative.
+alternative unless the alternative is specified as an IP literal.
 
 If the certificate is not valid for the origin's hostname, the client MUST NOT
 make requests to any origin corresponding to this certificate. In this case, the

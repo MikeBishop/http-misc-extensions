@@ -105,10 +105,10 @@ parameter in its alternative service entry.
 
 Syntax:
 
-    sni = ( host / empty-string )
+    sni = ( reg-name / empty-string )
     empty-string = DQUOTE DQUOTE
 
-`host` is defined in Section 3.2.2 of {{!RFC3986}}.
+`reg-name` is defined in Section 3.2.2 of {{!RFC3986}}.
 
 When processing such an alternative, clients SHOULD present the hostname given
 in the `sni` parameter in the SNI extension during the TLS handshake. If the
@@ -123,7 +123,7 @@ at least one of the following:
 The client MUST validate the certificate in the handshake for authenticity
 according to {{!RFC2818}} and ensure that it is valid for at least one of these
 names.  Clients SHOULD NOT accept certificates issued to the IP address of the
-alternative.
+alternative unless the alternative is specified as an IP literal.
 
 If the certificate is not valid for the origin's hostname, the client MUST NOT
 make requests to any origin corresponding to this certificate. In this case, the

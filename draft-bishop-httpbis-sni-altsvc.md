@@ -206,8 +206,12 @@ The server would supply a certificate that covers sensitive.example.com, for exa
 because it contains a Subject Alternative Name of "*.example.com", and the client
 would perform validity checks on this certificate.
 
-If the supplied certificate does not cover sensitive.example.com, or is not
-valid, the client will terminate the connection.
+If the supplied certificate does not cover sensitive.example.com or
+alternative.example.com, the client will terminate the connection.  Otherwise, the
+client will perform validity checks, terminating the connection if the certificate
+is not valid and trusted.  If the certificate covers sensitive.example.com, the client
+will send its request over HTTP/2; otherwise, it will send a `CERTIFICATE` frame
+for "sensitive.example.com".
 
 ## SNI of Unrelated Domain
 
@@ -230,7 +234,7 @@ certificate for the name "sensitive.example.com".
 
 Note that an active attacker could identify this server by sending a Client
 Hello with the same SNI value and observing the certificate the server uses to
-authenticate. The server could mitigate this by authenticating with a
+authenticate. The server could mitigate this by authenticating with a valid
 certificate for other.example.
 
 # Security Considerations

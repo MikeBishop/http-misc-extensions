@@ -33,11 +33,11 @@ informative:
 
 --- abstract
 
-HTTP/2 defines the wire mechanics of Server Push in [RFC7540], Section 8.2.
-Though the mechanics of how a pushed resource is delivered are well-specified,
-the use cases that describe which resources can be pushed, in what states, and
-for what purpose are not described in HTTP/2.  As a result, support between
-implementations varies widely.
+HTTP/2 defines the wire mechanics of Server Push. Though the mechanics of how a
+pushed resource is delivered are well-specified, the use cases that describe
+which resources can be pushed, in what states, and for what purpose are not
+described in HTTP/2.  As a result, support between implementations varies
+widely.
 
 This document attempts to enumerate interesting scenarios, in hopes that a more
 concrete taxonomy can assist the community in arriving at a standard set of
@@ -171,6 +171,17 @@ While no user agents are known to support this, a server could hypothetically
 pre-validate stale items in the client's cache by pushing a conditional request
 (If-Not-Match or If-Not-Modified) for a resource it believes is already in the
 cache and a 304 (Not Modified) response.
+
+Such a push could be consumed directly by the cache (updating the validity of
+the cached object) or treated as a pre-satisfied request should the cache
+attempt to revalidate an expired object.  The former will tend to extend the
+lifetime of the cached object on each use, while the latter will not affect the
+object unless it has expired.
+
+A push which attempts to revalidate content which is no longer cached could be
+treated equivalently to a preload link, a suggestion that this content might
+soon be needed. Triggering a follow-up request for the full body might improve
+performance.
 
 ## Cache Invalidation
 

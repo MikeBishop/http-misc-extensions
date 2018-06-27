@@ -51,6 +51,19 @@ HTTP is fundamentally a request/response mechanism.  Each request specifies some
 action (often content retrieval) which the user agent wishes the server to
 perform on a resource and return the result of the action.
 
+However, when a response triggers a subsequent request, network and processing
+delays cause this subsequent request not to begin immediately.  The client must
+receive the initial response (0.5 RTT network delay), parse it and identify the
+next request (implementation- and page-dependent), then send the request back to
+the server (0.5 RTT network delay) before the server can begin to satisfy the
+request.
+
+Some mechanisms attempt to reduce the client processing time by enumerating
+important follow-up requests in HTTP headers or at the beginning of the response
+payload.  However, these techniques still incur at least 1 RTT of network delay
+before the server receives the subsequent request.  Depending on the distance
+between client and server, this delay might be significant.
+
 HTTP/2 defines Server Push, a paradigm in which the server can also return the
 results of actions the user agent did *not* request.  In order to preserve the
 request-response semantics of HTTP, the server first "promises" something by

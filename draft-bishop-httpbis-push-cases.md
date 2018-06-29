@@ -127,6 +127,19 @@ the contents of the e-mail once the user clicks a list entry.  If a site author
 knows the user is likely to click one of the first three unread e-mails, the
 contents of those e-mails are reasonable candidates for Server Push.
 
+### Future Navigations
+
+Certain web pages naturally lend themselves to obvious next steps.  This might
+be a checkout flow on a retail site, or multi-page content in an article or series.
+A web site could promise some elements of the likely future navigation to the browser,
+satisfying them only once everything relevant to the current page has been transferred.
+
+The benefit of using push for this seems dubious, since the latency savings of
+waiting for the browser to know about the future page are not present.  A better
+solution, in many cases, would be the `prefetch` or `prerender` Link
+relationships.
+
+
 ## Non-Browser Scenarios
 
 Non-browser scenarios can typically be analyzed as an API.
@@ -162,7 +175,7 @@ ways and for different purposes.
 
 The most common and most widely supported variety of push simply provides a
 request that the client is expected to make, along with a successful (typically
-200) response carrying the content.
+1)   response carrying the content.
 
 ## Cache Population
 

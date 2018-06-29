@@ -175,7 +175,7 @@ ways and for different purposes.
 
 The most common and most widely supported variety of push simply provides a
 request that the client is expected to make, along with a successful (typically
-1)   response carrying the content.
+`200`) response carrying the content.
 
 ## Cache Population
 

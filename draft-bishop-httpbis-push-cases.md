@@ -112,7 +112,7 @@ for the rendering or functionality of the page.
 
 After the DOM is constructed, it can be locally modified.  Some web sites
 consist of very sparse static content, then rely on the execution of scripts
-locally to create DOM element or update existing elements to reference new
+locally to create DOM elements or update existing elements to reference new
 target resources.
 
 ### Requests made by local script execution {#browser-script}

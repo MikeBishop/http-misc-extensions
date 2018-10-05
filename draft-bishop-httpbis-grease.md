@@ -65,17 +65,17 @@ padding on DATA or HEADERS frames where possible.  They MAY also be sent on
 connections where there is no application data currently being transferred.
 Endpoints MUST NOT consider these frames to have any meaning upon receipt.
 
-Both the payload and length of the frames SHOULD be selected randomly, subject
-to implementation-defined limits on the length.
+The flags, the payload, and the length of the frames SHOULD be selected
+randomly, subject to implementation-defined limits on the length.
 
 
 ## GREASE for SETTINGS
 
-Settings values of the format `0x?a?a` are reserved for use as grease.  Such
-settings have no defined meaning.  Endpoints SHOULD include at least one such
-setting in their initial SETTINGS frame, and MAY send new SETTINGS frames during
-the connection containing additional grease values.  Endpoints MUST NOT consider
-such settings to have any meaning upon receipt.
+Settings identifiers of the format `0x?a?a` are reserved for use as grease.
+Such settings have no defined meaning.  Endpoints SHOULD include at least one
+such setting in their initial SETTINGS frame, and MAY send new SETTINGS frames
+during the connection containing additional grease values.  Endpoints MUST NOT
+consider such settings to have any meaning upon receipt.
 
 Because the setting has no defined meaning, the value of the setting SHOULD be
 selected randomly.

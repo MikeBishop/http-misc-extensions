@@ -94,32 +94,17 @@ critical to security.
 
 ## Frame Types
 
-This document registers a range of entries in the "HTTP/2 Frame Type" registry
-defined in {{!HTTP2}}.  For each code of the format `0xb + (0x1f * N)` for
-values of N in the range (0..7) (that is, `0xb`, `0x2a`, etc., through `0xe4`),
-the following values should be registered:
-
-Frame Type:
-: Reserved - GREASE
-
-Specification:
-: This document
+This document reserves a range of entries in the "HTTP/2 Frame Type" registry
+defined in {{!HTTP2}}.  Each code of the format `0xb + (0x1f * N)` for values of
+N in the range (0..7) (that is, `0xb`, `0x2a`, etc., through `0xe4`) MUST NOT be
+assigned by IANA for any purpose.
 
 ## Settings
 
-This document registers a range of entries in the "HTTP/2 Settings" registry
-defined in {{!HTTP2}}.  For each code of the format `0x?a?a` where each `?` is
-any octet (that is, `0x0a0a`, `0x0a1a`, etc. through `0xfafa`), the following
-values should be registered:
-
-Name:
-: Reserved - GREASE
-
-Initial Value:
-: (undefined)
-
-Specification:
-: This document
+This document reserves a range of entries in the "HTTP/2 Settings" registry
+defined in {{!HTTP2}}.  Each code of the format `0x?a?a` where each `?` is any
+octet (that is, `0x0a0a`, `0x0a1a`, etc. through `0xfafa`) MUST NOT be assigned
+by IANA for any purpose.
 
 --- back
 

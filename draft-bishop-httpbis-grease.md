@@ -68,6 +68,10 @@ Endpoints MUST NOT consider these frames to have any meaning upon receipt.
 The flags, the payload, and the length of the frames SHOULD be selected
 randomly, subject to implementation-defined limits on the length.
 
+{{!HTTP2}} is ambiguous about whether unknown frame types are permitted on
+streams in the "idle", "reserved", "closed", or "half-closed (local)" states.
+As a result, some implementations could legitimately consider this to be an
+error.  Therefore, these frames SHOULD NOT be sent on streams in those states.
 
 ## GREASE for SETTINGS
 

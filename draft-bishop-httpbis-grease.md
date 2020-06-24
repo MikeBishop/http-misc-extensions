@@ -37,10 +37,9 @@ that clients and servers ignore unknown values.
 
 {{?UseIt=I-D.thomson-use-it-or-lose-it}} observes that extension and negotiation
 mechanisms which aren't exercised regularly can be found not to work when they
-are later employed by an extension to the protocol.
-{{?GREASE=I-D.ietf-tls-grease}} is one mitigation which originated in TLS,
-registering multiple values in various TLS registries which can be sent
-prospectively by clients.
+are later employed by an extension to the protocol. {{?GREASE=RFC8701}} is one
+mitigation which originated in TLS, registering multiple values in various TLS
+registries which can be sent prospectively by clients.
 
 The common requirement of the different spaces described by these documents is
 the requirement that recipients ignore unrecognized values.  By reserving a

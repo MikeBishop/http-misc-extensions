@@ -63,6 +63,7 @@ These frames have no semantic meaning, and SHOULD be send instead of using
 padding on DATA or HEADERS frames where possible.  They MAY also be sent on
 connections where there is no application data currently being transferred.
 Endpoints MUST NOT consider these frames to have any meaning upon receipt.
+These frames are not subject to flow control.
 
 The flags, the payload, and the length of the frames SHOULD be selected
 randomly, subject to implementation-defined limits on the length.

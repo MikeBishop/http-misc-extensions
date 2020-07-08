@@ -55,7 +55,7 @@ type.
 
 Where HTTP/2 reserves Stream 0 for frames related to the state of the
 connection, HTTP/3 defines a pair of unidirectional streams called "control
-streams" for this purpose.  Where the existing RFCs indicate that a stream
+streams" for this purpose.  Where the existing RFCs indicate that a frame
 should be sent on Stream 0, this should be interpreted to mean the HTTP/3
 control stream.
 

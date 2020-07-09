@@ -4,8 +4,8 @@
 
 HTTPbis                                                        M. Bishop
 Internet-Draft                                                    Akamai
-Intended status: Informational                              24 June 2020
-Expires: 26 December 2020
+Intended status: Informational                               9 July 2020
+Expires: 10 January 2021
 
 
                       HTTP/2 Server Push Use Cases
@@ -38,7 +38,7 @@ Status of This Memo
    time.  It is inappropriate to use Internet-Drafts as reference
    material or to cite them other than as "work in progress."
 
-   This Internet-Draft will expire on 26 December 2020.
+   This Internet-Draft will expire on 10 January 2021.
 
 Copyright Notice
 
@@ -53,9 +53,9 @@ Copyright Notice
 
 
 
-Bishop                  Expires 26 December 2020                [Page 1]
+Bishop                   Expires 10 January 2021                [Page 1]
 
-Internet-Draft               Push Use Cases                    June 2020
+Internet-Draft               Push Use Cases                    July 2020
 
 
    extracted from this document must include Simplified BSD License text
@@ -109,9 +109,9 @@ Table of Contents
 
 
 
-Bishop                  Expires 26 December 2020                [Page 2]
+Bishop                   Expires 10 January 2021                [Page 2]
 
-Internet-Draft               Push Use Cases                    June 2020
+Internet-Draft               Push Use Cases                    July 2020
 
 
    HTTP/2 defines Server Push, a paradigm in which the server can also
@@ -165,9 +165,9 @@ Internet-Draft               Push Use Cases                    June 2020
 
 
 
-Bishop                  Expires 26 December 2020                [Page 3]
+Bishop                   Expires 10 January 2021                [Page 3]
 
-Internet-Draft               Push Use Cases                    June 2020
+Internet-Draft               Push Use Cases                    July 2020
 
 
 2.1.2.  Updated DOM contents
@@ -221,9 +221,9 @@ Internet-Draft               Push Use Cases                    June 2020
 
 
 
-Bishop                  Expires 26 December 2020                [Page 4]
+Bishop                   Expires 10 January 2021                [Page 4]
 
-Internet-Draft               Push Use Cases                    June 2020
+Internet-Draft               Push Use Cases                    July 2020
 
 
 2.2.2.  Streaming APIs
@@ -277,9 +277,9 @@ Internet-Draft               Push Use Cases                    June 2020
 
 
 
-Bishop                  Expires 26 December 2020                [Page 5]
+Bishop                   Expires 10 January 2021                [Page 5]
 
-Internet-Draft               Push Use Cases                    June 2020
+Internet-Draft               Push Use Cases                    July 2020
 
 
    Such a push could be consumed directly by the cache (updating the
@@ -333,9 +333,9 @@ Internet-Draft               Push Use Cases                    June 2020
 
 
 
-Bishop                  Expires 26 December 2020                [Page 6]
+Bishop                   Expires 10 January 2021                [Page 6]
 
-Internet-Draft               Push Use Cases                    June 2020
+Internet-Draft               Push Use Cases                    July 2020
 
 
    [RFC8030]  Thomson, M., Damaggio, E., and B. Raymor, Ed., "Generic
@@ -389,4 +389,4 @@ Author's Address
 
 
 
-Bishop                  Expires 26 December 2020                [Page 7]
+Bishop                   Expires 10 January 2021                [Page 7]

@@ -4,8 +4,8 @@
 
 HTTPbis                                                        M. Bishop
 Internet-Draft                                                    Akamai
-Intended status: Standards Track                            24 June 2020
-Expires: 26 December 2020
+Intended status: Standards Track                             9 July 2020
+Expires: 10 January 2021
 
 
                   Existing HTTP/2 Extensions in HTTP/3
@@ -32,7 +32,7 @@ Status of This Memo
    time.  It is inappropriate to use Internet-Drafts as reference
    material or to cite them other than as "work in progress."
 
-   This Internet-Draft will expire on 26 December 2020.
+   This Internet-Draft will expire on 10 January 2021.
 
 Copyright Notice
 
@@ -53,9 +53,9 @@ Copyright Notice
 
 
 
-Bishop                  Expires 26 December 2020                [Page 1]
+Bishop                   Expires 10 January 2021                [Page 1]
 
-Internet-Draft         HTTP/2 Extensions in HTTP/3             June 2020
+Internet-Draft         HTTP/2 Extensions in HTTP/3             July 2020
 
 
 Table of Contents
@@ -109,9 +109,9 @@ Table of Contents
 
 
 
-Bishop                  Expires 26 December 2020                [Page 2]
+Bishop                   Expires 10 January 2021                [Page 2]
 
-Internet-Draft         HTTP/2 Extensions in HTTP/3             June 2020
+Internet-Draft         HTTP/2 Extensions in HTTP/3             July 2020
 
 
    An ALTSVC frame from a server to a client on a stream other than the
@@ -165,9 +165,9 @@ Internet-Draft         HTTP/2 Extensions in HTTP/3             June 2020
 
 
 
-Bishop                  Expires 26 December 2020                [Page 3]
+Bishop                   Expires 10 January 2021                [Page 3]
 
-Internet-Draft         HTTP/2 Extensions in HTTP/3             June 2020
+Internet-Draft         HTTP/2 Extensions in HTTP/3             July 2020
 
 
    [ALTSVC]   Nottingham, M., McManus, P., and J. Reschke, "HTTP
@@ -221,4 +221,4 @@ Author's Address
 
 
 
-Bishop                  Expires 26 December 2020                [Page 4]
+Bishop                   Expires 10 January 2021                [Page 4]

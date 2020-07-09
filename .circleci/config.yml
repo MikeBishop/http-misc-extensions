@@ -1,0 +1,30 @@
+version: 2
+jobs:
+  build:
+    docker:
+      - image: martinthomson/i-d-template:latest
+    working_directory: ~/draft
+
+    steps:
+      - checkout
+
+      # Prime caches for faster checkout
+      - restore_cache:
+          keys:
+            - template
+      - run:
+          name: "Update Template"
+          command: "git -C ~/i-d-template remote update --prune"
+      - save_cache:
+          key: template
+          paths:
+            - ~/i-d-template
+
+workflows:
+  version: 2
+  build:
+    jobs:
+      - build:
+          filters:
+            tags:
+              only: /.*?/

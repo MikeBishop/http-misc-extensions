@@ -1,0 +1,251 @@
+{
+  "magic": "E!vIA5L86J2I",
+  "timestamp": "2020-07-09T14:16:50.973975+00:00",
+  "repo": "MikeBishop/http-misc-extensions",
+  "labels": [
+    {
+      "name": "bug",
+      "description": null,
+      "color": "ee0701"
+    },
+    {
+      "name": "duplicate",
+      "description": null,
+      "color": "cccccc"
+    },
+    {
+      "name": "enhancement",
+      "description": null,
+      "color": "84b6eb"
+    },
+    {
+      "name": "help wanted",
+      "description": null,
+      "color": "128A0C"
+    },
+    {
+      "name": "invalid",
+      "description": null,
+      "color": "e6e6e6"
+    },
+    {
+      "name": "question",
+      "description": null,
+      "color": "cc317c"
+    },
+    {
+      "name": "wontfix",
+      "description": null,
+      "color": "ffffff"
+    }
+  ],
+  "issues": [
+    {
+      "number": 2,
+      "id": "MDU6SXNzdWUzMDY5ODM3OTE=",
+      "title": "DNS Alt-Svc: Switch _protocol and _port",
+      "url": "https://github.com/MikeBishop/http-misc-extensions/issues/2",
+      "state": "CLOSED",
+      "author": "bemasc",
+      "authorAssociation": "CONTRIBUTOR",
+      "assignees": [],
+      "labels": [],
+      "body": "We got a suggestion to switch the order from _https._443 to _443._https",
+      "createdAt": "2018-03-20T18:19:54Z",
+      "updatedAt": "2018-03-26T21:12:31Z",
+      "closedAt": "2018-03-26T21:12:31Z",
+      "comments": [
+        {
+          "author": "MikeBishop",
+          "authorAssociation": "OWNER",
+          "body": "...from @martinthomson.",
+          "createdAt": "2018-03-20T18:22:04Z",
+          "updatedAt": "2018-03-20T18:22:04Z"
+        }
+      ]
+    }
+  ],
+  "pulls": [
+    {
+      "number": 1,
+      "id": "MDExOlB1bGxSZXF1ZXN0MTcwODk1MTMy",
+      "title": "Proposal: Tighten validation rules",
+      "url": "https://github.com/MikeBishop/http-misc-extensions/pull/1",
+      "state": "MERGED",
+      "author": "bemasc",
+      "authorAssociation": "CONTRIBUTOR",
+      "assignees": [],
+      "labels": [],
+      "body": "Previously we've considered two validation rules: \"require the certificate to validate for the SNI\" or \"don't require the certificate to validate for the SNI\".  The former prevents us from setting the SNI to an unrelated domain, but the latter allows an active adversary to observe the CERTIFICATE_REQUEST frame and learn the true destination.\r\n\r\nThis change splits the difference, making the rule \"require the certificate to validate for the SNI or for the origin\".  This implicitly relies on TLS 1.3 to hide the origin's certificate if the SNI is an unrelated domain.",
+      "createdAt": "2018-02-22T23:27:02Z",
+      "updatedAt": "2018-02-27T19:13:29Z",
+      "baseRepository": "MikeBishop/http-misc-extensions",
+      "baseRefName": "master",
+      "baseRefOid": "8270e55aa3b54f4a630ce3661aca14869ec513d1",
+      "headRepository": "bemasc/http-misc-extensions",
+      "headRefName": "patch-1",
+      "headRefOid": "bb69232188f2442ba8b090d0f488426e051cf627",
+      "closedAt": "2018-02-27T18:59:13Z",
+      "mergedAt": "2018-02-27T18:59:13Z",
+      "mergedBy": "MikeBishop",
+      "mergeCommit": {
+        "oid": "2f8a90a869cfe1d36637ddb1eb6c3a9a13ef5052"
+      },
+      "comments": [],
+      "reviews": []
+    },
+    {
+      "number": 3,
+      "id": "MDExOlB1bGxSZXF1ZXN0MTkwMDI0NTgz",
+      "title": "Allow IP certs for IP alt-hosts",
+      "url": "https://github.com/MikeBishop/http-misc-extensions/pull/3",
+      "state": "MERGED",
+      "author": "bemasc",
+      "authorAssociation": "CONTRIBUTOR",
+      "assignees": [],
+      "labels": [],
+      "body": "I'm not entirely confident what the right logic is for this, but allowing IP certs if the alternative is an IP address seems reasonable.\r\n\r\nAlso, the current instructions allow an IP literal SNI and tell the client to put it in the SNI field, which I think is bizarre (and possibly a violation of the SNI spec).",
+      "createdAt": "2018-05-23T15:52:44Z",
+      "updatedAt": "2018-05-24T21:39:24Z",
+      "baseRepository": "MikeBishop/http-misc-extensions",
+      "baseRefName": "master",
+      "baseRefOid": "544aab078feb421f9f15ce3a72509b836801de8a",
+      "headRepository": "bemasc/http-misc-extensions",
+      "headRefName": "patch-1",
+      "headRefOid": "e87316396ca91ac5f996f3e0a396c4f721dc863a",
+      "closedAt": "2018-05-24T21:39:24Z",
+      "mergedAt": "2018-05-24T21:39:24Z",
+      "mergedBy": "MikeBishop",
+      "mergeCommit": {
+        "oid": "3f515b8309ecf421adfa2e3da41d9b26b822fb14"
+      },
+      "comments": [
+        {
+          "author": "MikeBishop",
+          "authorAssociation": "OWNER",
+          "body": "You're correct that RFC6066 explicitly prohibits IP literals in the SNI extension (at least in the HostName field, which is what we care about.)  On the other hand, saying that if the value of the SNI is an IP literal, it's equivalent to an empty string, that's a little odd, too.  I think these are the relevant combinations:\r\n\r\n| Alternative | SNI param | Outcome |\r\n| --- | --- | --- |\r\n| Hostname | Hostname | Fine; domain fronting |\r\n| Hostname | IP literal | Invalid...? |\r\n| Hostname | Empty string | Fine; expect an IP-bound certificate |\r\n| IP literal | Hostname | Fine; expect an SNI-bound certificate |\r\n| IP literal | IP literal | Invalid...? |\r\n| IP literal | Empty string | Fine; expect an IP-bound certificate |\r\n\r\nI think the takeaway is that the value in `sni` MUST be either a hostname or the empty string, and it has nothing to do with whether the alternative is given as a hostname or an IP literal.  Perhaps we just change it from `host` to `reg-name` and keep the same reference to 3986?",
+          "createdAt": "2018-05-23T17:06:07Z",
+          "updatedAt": "2018-05-23T17:06:07Z"
+        },
+        {
+          "author": "bemasc",
+          "authorAssociation": "CONTRIBUTOR",
+          "body": "I'm OK with this behavior*.  It only rules out soliciting a specific IP-bound certificate for a *different* IP address, which is probably too weird to be useful anyway.\r\n\r\nWould you like me to update this pull request or do you have text in mind?\r\n\r\n*I think you have a typo in the row for \"Hostname + Empty string\".",
+          "createdAt": "2018-05-23T17:18:55Z",
+          "updatedAt": "2018-05-23T17:18:55Z"
+        },
+        {
+          "author": "MikeBishop",
+          "authorAssociation": "OWNER",
+          "body": "I'm not seeing the typo.  Am I missing something substantive?\r\n\r\nI don't think much text is needed; change the ABNF and the 3986 reference to `reg-name` instead of `host`, and drop the first of the two changes you've made here.  The second change seems reasonable; we'll see if people freak out about it.  :-)  Feel free to update the PR.",
+          "createdAt": "2018-05-23T22:32:25Z",
+          "updatedAt": "2018-05-23T22:33:14Z"
+        },
+        {
+          "author": "bemasc",
+          "authorAssociation": "CONTRIBUTOR",
+          "body": "OK, updated.\r\n\r\nFor \"Hostname + Empty string\", you have \"expect an IP-bound certificate\", when I think you mean \"expect a hostname-bound certificate\".",
+          "createdAt": "2018-05-23T22:46:31Z",
+          "updatedAt": "2018-05-23T22:46:31Z"
+        },
+        {
+          "author": "MikeBishop",
+          "authorAssociation": "OWNER",
+          "body": "That\u2019s correct, actually. The hostname gets resolved on the client, which hopefully leads to a sufficiently unique IP address.  If the `sni` parameter is an empty string, no SNI value is sent, so the server doesn\u2019t know the hostname.\r\n\r\nFrom: Benjamin M. Schwartz <notifications@github.com>\r\nSent: Wednesday, May 23, 2018 3:47 PM\r\nTo: MikeBishop/http-misc-extensions <http-misc-extensions@noreply.github.com>\r\nCc: Mike Bishop <mbishop@evequefou.be>; Comment <comment@noreply.github.com>\r\nSubject: Re: [MikeBishop/http-misc-extensions] Allow IP certs for IP alt-hosts (#3)\r\n\r\n\r\nOK, updated.\r\n\r\nFor \"Hostname + Empty string\", you have \"expect an IP-bound certificate\", when I think you mean \"expect a hostname-bound certificate\".\r\n\r\n\u2014\r\nYou are receiving this because you commented.\r\nReply to this email directly, view it on GitHub<https://github.com/MikeBishop/http-misc-extensions/pull/3#issuecomment-391523329>, or mute the thread<https://github.com/notifications/unsubscribe-auth/AEE2hUoc-rC3iUftucvyFiQBqgQMXYWAks5t1ebHgaJpZM4UKuvb>.\r\n",
+          "createdAt": "2018-05-23T23:44:08Z",
+          "updatedAt": "2018-05-23T23:44:08Z"
+        },
+        {
+          "author": "bemasc",
+          "authorAssociation": "CONTRIBUTOR",
+          "body": ">> For \"Hostname + Empty string\", you have \"expect an IP-bound certificate\", when I think you mean \"expect a hostname-bound certificate\".\r\n\r\n> That\u2019s correct, actually. The hostname gets resolved on the client, which hopefully leads to a sufficiently unique IP address.  If the `sni` parameter is an empty string, no SNI value is sent, so the server doesn\u2019t know the hostname.\r\n\r\nAh, by IP-bound you mean \"determined by the IP address\", not \"valid only for the IP address\".  I would call that \"the server's default certificate\".  OK, we're in agreement.",
+          "createdAt": "2018-05-24T00:20:46Z",
+          "updatedAt": "2018-05-24T00:20:46Z"
+        }
+      ],
+      "reviews": []
+    },
+    {
+      "number": 4,
+      "id": "MDExOlB1bGxSZXF1ZXN0MTkyMTI0MjEz",
+      "title": "Correct \"Omitting SNI\" example text",
+      "url": "https://github.com/MikeBishop/http-misc-extensions/pull/4",
+      "state": "MERGED",
+      "author": "bemasc",
+      "authorAssociation": "CONTRIBUTOR",
+      "assignees": [],
+      "labels": [],
+      "body": "This is in response to mailing list feedback that identified this issue.",
+      "createdAt": "2018-06-01T19:37:29Z",
+      "updatedAt": "2018-06-03T04:26:34Z",
+      "baseRepository": "MikeBishop/http-misc-extensions",
+      "baseRefName": "master",
+      "baseRefOid": "3f515b8309ecf421adfa2e3da41d9b26b822fb14",
+      "headRepository": "bemasc/http-misc-extensions",
+      "headRefName": "patch-2",
+      "headRefOid": "7d181a0df928e59251e41da2de079025949640f2",
+      "closedAt": "2018-06-03T04:26:34Z",
+      "mergedAt": "2018-06-03T04:26:34Z",
+      "mergedBy": "MikeBishop",
+      "mergeCommit": {
+        "oid": "c0ecc432e84ef43bbffcc8949f7135765a5b5d6e"
+      },
+      "comments": [],
+      "reviews": []
+    },
+    {
+      "number": 5,
+      "id": "MDExOlB1bGxSZXF1ZXN0NDQ0NzUxMjI0",
+      "title": "Frames of reserved type are not subject to flow control.",
+      "url": "https://github.com/MikeBishop/http-misc-extensions/pull/5",
+      "state": "MERGED",
+      "author": "bencebeky",
+      "authorAssociation": "FIRST_TIME_CONTRIBUTOR",
+      "assignees": [],
+      "labels": [],
+      "body": "RFC7540 only specifies the frame types subject to flow control among the\r\nframe types defined within: \"Of the frames specified in this document,\r\nonly DATA frames are subject to flow control; all other frame types do\r\nnot consume space in the advertised flow-control window.\" (Secton 5.2.1)\r\nIt allows extensions to define new frame types and make them subject to\r\nflow control or not (\"treating any frames other than DATA frames as flow\r\ncontrolled [...]\" in Section 5.5).\r\n\r\nThis PR explicitly states that frames of reserved types are not subject\r\nto flow control.",
+      "createdAt": "2020-07-06T12:45:17Z",
+      "updatedAt": "2020-07-09T14:16:16Z",
+      "baseRepository": "MikeBishop/http-misc-extensions",
+      "baseRefName": "master",
+      "baseRefOid": "bc397c399d876c2e202303ade598715094768411",
+      "headRepository": "bencebeky/http-misc-extensions",
+      "headRefName": "bencebeky-grease-flow-control",
+      "headRefOid": "a2c79fb93d6080fdcd4cd418e600f56dcf77a982",
+      "closedAt": "2020-07-09T14:16:16Z",
+      "mergedAt": "2020-07-09T14:16:16Z",
+      "mergedBy": "MikeBishop",
+      "mergeCommit": {
+        "oid": "cf595f4c9be67a841b62c6f4a262836932fc51e8"
+      },
+      "comments": [],
+      "reviews": []
+    },
+    {
+      "number": 6,
+      "id": "MDExOlB1bGxSZXF1ZXN0NDQ2MzcwOTU0",
+      "title": "s/stream/frame/",
+      "url": "https://github.com/MikeBishop/http-misc-extensions/pull/6",
+      "state": "OPEN",
+      "author": "bencebeky",
+      "authorAssociation": "FIRST_TIME_CONTRIBUTOR",
+      "assignees": [],
+      "labels": [],
+      "body": "",
+      "createdAt": "2020-07-08T17:00:10Z",
+      "updatedAt": "2020-07-08T17:00:10Z",
+      "baseRepository": "MikeBishop/http-misc-extensions",
+      "baseRefName": "master",
+      "baseRefOid": "bc397c399d876c2e202303ade598715094768411",
+      "headRepository": "bencebeky/http-misc-extensions",
+      "headRefName": "bencebeky-extensions-frame",
+      "headRefOid": "3ebec18827c011839d5ff3d1481626f6617eda67",
+      "closedAt": null,
+      "mergedAt": null,
+      "mergedBy": null,
+      "mergeCommit": null,
+      "comments": [],
+      "reviews": []
+    }
+  ]
+}

@@ -4,12 +4,12 @@
 
 HTTPbis                                                        M. Bishop
 Internet-Draft                                                    Akamai
-Intended status: Informational                               9 July 2020
-Expires: 10 January 2021
+Intended status: Informational                          1 September 2021
+Expires: 5 March 2022
 
 
                       HTTP/2 Server Push Use Cases
-                 draft-bishop-httpbis-push-cases-latest
+                    draft-bishop-httpbis-push-cases
 
 Abstract
 
@@ -38,11 +38,11 @@ Status of This Memo
    time.  It is inappropriate to use Internet-Drafts as reference
    material or to cite them other than as "work in progress."
 
-   This Internet-Draft will expire on 10 January 2021.
+   This Internet-Draft will expire on 5 March 2022.
 
 Copyright Notice
 
-   Copyright (c) 2020 IETF Trust and the persons identified as the
+   Copyright (c) 2021 IETF Trust and the persons identified as the
    document authors.  All rights reserved.
 
    This document is subject to BCP 78 and the IETF Trust's Legal
@@ -50,38 +50,30 @@ Copyright Notice
    license-info) in effect on the date of publication of this document.
    Please review these documents carefully, as they describe your rights
    and restrictions with respect to this document.  Code Components
-
-
-
-Bishop                   Expires 10 January 2021                [Page 1]
-
-Internet-Draft               Push Use Cases                    July 2020
-
-
    extracted from this document must include Simplified BSD License text
    as described in Section 4.e of the Trust Legal Provisions and are
    provided without warranty as described in the Simplified BSD License.
 
 Table of Contents
 
-   1.  Introduction  . . . . . . . . . . . . . . . . . . . . . . . .   2
-   2.  Types of Resources  . . . . . . . . . . . . . . . . . . . . .   3
-     2.1.  Browser Scenarios . . . . . . . . . . . . . . . . . . . .   3
-       2.1.1.  Static DOM contents . . . . . . . . . . . . . . . . .   3
-       2.1.2.  Updated DOM contents  . . . . . . . . . . . . . . . .   4
-       2.1.3.  Requests made by local script execution . . . . . . .   4
-       2.1.4.  Future Navigations  . . . . . . . . . . . . . . . . .   4
-     2.2.  Non-Browser Scenarios . . . . . . . . . . . . . . . . . .   4
-       2.2.1.  Subsequent API Requests . . . . . . . . . . . . . . .   4
-       2.2.2.  Streaming APIs  . . . . . . . . . . . . . . . . . . .   5
-   3.  Types of Pushes . . . . . . . . . . . . . . . . . . . . . . .   5
-     3.1.  Pre-Satisfying Requests . . . . . . . . . . . . . . . . .   5
-     3.2.  Cache Population  . . . . . . . . . . . . . . . . . . . .   5
-     3.3.  Cache Revalidation  . . . . . . . . . . . . . . . . . . .   5
-     3.4.  Cache Invalidation  . . . . . . . . . . . . . . . . . . .   6
-   4.  Security Considerations . . . . . . . . . . . . . . . . . . .   6
-   5.  Informative References  . . . . . . . . . . . . . . . . . . .   6
-   Author's Address  . . . . . . . . . . . . . . . . . . . . . . . .   7
+   1.  Introduction
+   2.  Types of Resources
+     2.1.  Browser Scenarios
+       2.1.1.  Static DOM contents
+       2.1.2.  Updated DOM contents
+       2.1.3.  Requests made by local script execution
+       2.1.4.  Future Navigations
+     2.2.  Non-Browser Scenarios
+       2.2.1.  Subsequent API Requests
+       2.2.2.  Streaming APIs
+   3.  Types of Pushes
+     3.1.  Pre-Satisfying Requests
+     3.2.  Cache Population
+     3.3.  Cache Revalidation
+     3.4.  Cache Invalidation
+   4.  Security Considerations
+   5.  Informative References
+   Author's Address
 
 1.  Introduction
 
@@ -104,15 +96,6 @@ Table of Contents
    incur at least 1 RTT of network delay before the server receives the
    subsequent request.  Depending on the distance between client and
    server, this delay might be significant.
-
-
-
-
-
-Bishop                   Expires 10 January 2021                [Page 2]
-
-Internet-Draft               Push Use Cases                    July 2020
-
 
    HTTP/2 defines Server Push, a paradigm in which the server can also
    return the results of actions the user agent did _not_ request.  In
@@ -162,14 +145,6 @@ Internet-Draft               Push Use Cases                    July 2020
    Such resources are typically CSS, JavaScript, images, or other
    elements required for the rendering or functionality of the page.
 
-
-
-
-Bishop                   Expires 10 January 2021                [Page 3]
-
-Internet-Draft               Push Use Cases                    July 2020
-
-
 2.1.2.  Updated DOM contents
 
    After the DOM is constructed, it can be locally modified.  Some web
@@ -218,14 +193,6 @@ Internet-Draft               Push Use Cases                    July 2020
    If the server can predict subsequent actions, it can pre-satisfy the
    most likely cases in order to minimize latency.
 
-
-
-
-Bishop                   Expires 10 January 2021                [Page 4]
-
-Internet-Draft               Push Use Cases                    July 2020
-
-
 2.2.2.  Streaming APIs
 
    Some APIs do not fit well with the request-response model of HTTP,
@@ -273,15 +240,6 @@ Internet-Draft               Push Use Cases                    July 2020
    resource it believes is already in the cache and a 304 (Not Modified)
    response.
 
-
-
-
-
-Bishop                   Expires 10 January 2021                [Page 5]
-
-Internet-Draft               Push Use Cases                    July 2020
-
-
    Such a push could be consumed directly by the cache (updating the
    validity of the cached object) or treated as a pre-satisfied request
    should the cache attempt to revalidate an expired object.  The former
@@ -316,32 +274,22 @@ Internet-Draft               Push Use Cases                    July 2020
    [I-D.ietf-httpbis-cache-digest]
               Oku, K. and Y. Weiss, "Cache Digests for HTTP/2", Work in
               Progress, Internet-Draft, draft-ietf-httpbis-cache-digest-
-              05, 2 July 2018, <http://www.ietf.org/internet-drafts/
-              draft-ietf-httpbis-cache-digest-05.txt>.
+              05, 2 July 2018, <https://datatracker.ietf.org/doc/html/
+              draft-ietf-httpbis-cache-digest-05>.
 
    [RFC5988]  Nottingham, M., "Web Linking", RFC 5988,
               DOI 10.17487/RFC5988, October 2010,
-              <https://www.rfc-editor.org/info/rfc5988>.
+              <https://datatracker.ietf.org/doc/html/rfc5988>.
 
    [RFC7540]  Belshe, M., Peon, R., and M. Thomson, Ed., "Hypertext
               Transfer Protocol Version 2 (HTTP/2)", RFC 7540,
               DOI 10.17487/RFC7540, May 2015,
-              <https://www.rfc-editor.org/info/rfc7540>.
-
-
-
-
-
-
-Bishop                   Expires 10 January 2021                [Page 6]
-
-Internet-Draft               Push Use Cases                    July 2020
-
+              <https://datatracker.ietf.org/doc/html/rfc7540>.
 
    [RFC8030]  Thomson, M., Damaggio, E., and B. Raymor, Ed., "Generic
               Event Delivery Using HTTP Push", RFC 8030,
               DOI 10.17487/RFC8030, December 2016,
-              <https://www.rfc-editor.org/info/rfc8030>.
+              <https://datatracker.ietf.org/doc/html/rfc8030>.
 
 Author's Address
 
@@ -349,44 +297,3 @@ Author's Address
    Akamai
 
    Email: mbishop@evequefou.be
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-Bishop                   Expires 10 January 2021                [Page 7]
